@@ -534,7 +534,7 @@ std::shared_ptr<FileWriteOptions> ParquetFileFormat::DefaultWriteOptions() {
   options->arrow_writer_properties = parquet::default_arrow_writer_properties();
   return options;
 }
-
+// TODO: DON MakeWriter
 Result<std::shared_ptr<FileWriter>> ParquetFileFormat::MakeWriter(
     std::shared_ptr<io::OutputStream> destination, std::shared_ptr<Schema> schema,
     std::shared_ptr<FileWriteOptions> options,
