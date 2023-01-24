@@ -31,6 +31,7 @@
 #include "arrow/dataset/type_fwd.h"
 #include "arrow/dataset/visibility.h"
 #include "arrow/io/caching.h"
+#include "arrow/dataset/dataset_encryption_config.h"
 
 namespace parquet {
 class ParquetFileReader;
@@ -226,6 +227,8 @@ class ARROW_DS_EXPORT ParquetFragmentScanOptions : public FragmentScanOptions {
   /// ScanOptions. Additionally, dictionary columns come from
   /// ParquetFileFormat::ReaderOptions::dict_columns.
   std::shared_ptr<parquet::ArrowReaderProperties> arrow_reader_properties;
+  /// This is the high-level encryption configuration that is common to the dataset: 
+  std::shared_ptr<DatasetDecryptionConfiguration> dataset_decryption_config;  // TODO: DON
 };
 
 class ARROW_DS_EXPORT ParquetFileWriteOptions : public FileWriteOptions {
