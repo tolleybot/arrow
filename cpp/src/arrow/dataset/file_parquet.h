@@ -129,6 +129,14 @@ class ARROW_DS_EXPORT ParquetFileFormat : public FileFormat {
       fs::FileLocator destination_locator) const override;
 
   std::shared_ptr<FileWriteOptions> DefaultWriteOptions() override;
+
+    // TODO: DON add documentation
+  std::shared_ptr<::parquet::FileEncryptionProperties> GetFileEncryptionProperties(
+      std::string filePath, std::shared_ptr<::arrow::fs::FileSystem> filesystem)};
+  // TODO: DON add documentation
+  std::shared_ptr<::parquet::FileDecryptionProperties> GetFileDecryptionProperties(
+    std::string filePath, std::shared_ptr<::arrow::fs::FileSystem> filesystem);
+  
 };
 
 /// \brief A FileFragment with parquet logic.
@@ -218,6 +226,8 @@ class ARROW_DS_EXPORT ParquetFragmentScanOptions : public FragmentScanOptions {
   std::shared_ptr<parquet::ArrowReaderProperties> arrow_reader_properties;
   /// This is the high-level encryption configuration that is common to the dataset: 
   std::shared_ptr<DatasetDecryptionConfiguration> dataset_decryption_config;  // TODO: DON
+    /// This is the high-level encryption configuration that is common to the dataset: 
+  std::shared_ptr<DatasetEncryptionConfiguration> dataset_encryption_config;  // TODO: DON
 };
 
 class ARROW_DS_EXPORT ParquetFileWriteOptions : public FileWriteOptions {
