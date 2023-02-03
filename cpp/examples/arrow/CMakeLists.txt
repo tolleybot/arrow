@@ -151,6 +151,15 @@ if(ARROW_PARQUET AND ARROW_DATASET)
                     ${DATASET_EXAMPLES_LINK_LIBS})
   add_dependencies(execution-plan-documentation-examples parquet)
 
+  add_arrow_example(dataset_encrypt EXTRA_LINK_LIBS
+                    ${DATASET_EXAMPLES_LINK_LIBS})
+  add_dependencies(dataset-encrypt parquet)
+
+  add_arrow_example(dataset_encrypt2 EXTRA_LINK_LIBS
+  ${DATASET_EXAMPLES_LINK_LIBS})
+add_dependencies(dataset-encrypt2 parquet)
+
+
   if(ARROW_CSV)
     add_arrow_example(join_example EXTRA_LINK_LIBS ${DATASET_EXAMPLES_LINK_LIBS})
     add_dependencies(join-example parquet)

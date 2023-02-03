@@ -62,7 +62,7 @@ class PARQUET_EXPORT KeyToolkit {
 
   void RemoveCacheEntriesForAllTokens();
 
-  void RegisterKmsClientFactory(std::shared_ptr<KmsClientFactory> kms_client_factory) {
+void RegisterKmsClientFactory(std::shared_ptr<KmsClientFactory> kms_client_factory) {
     if (kms_client_factory_ != NULL) {
       throw ParquetException("KMS client factory has already been registered.");
     }

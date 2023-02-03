@@ -19,7 +19,6 @@
 
 #include "parquet/encryption/encryption.h"
 #include "parquet/encryption/kms_client.h"
-#include "parquet/encryption/properties.h"
 #include "parquet/encryption/crypto_factory.h"
 
 namespace arrow {

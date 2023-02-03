@@ -540,7 +540,7 @@ class PARQUET_EXPORT WriterProperties {
     std::string created_by_;
     bool store_decimal_as_integer_;
     bool page_checksum_enabled_;
-
+      
     std::shared_ptr<FileEncryptionProperties> file_encryption_properties_;
 
     // Settings used for each column unless overridden in any of the maps below
