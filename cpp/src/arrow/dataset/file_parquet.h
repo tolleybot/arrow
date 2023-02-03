@@ -132,7 +132,7 @@ class ARROW_DS_EXPORT ParquetFileFormat : public FileFormat {
 
     // TODO: DON add documentation
   std::shared_ptr<::parquet::FileEncryptionProperties> GetFileEncryptionProperties(
-      std::string filePath, std::shared_ptr<::arrow::fs::FileSystem> filesystem)};
+      std::string filePath, std::shared_ptr<::arrow::fs::FileSystem> filesystem);
   // TODO: DON add documentation
   std::shared_ptr<::parquet::FileDecryptionProperties> GetFileDecryptionProperties(
     std::string filePath, std::shared_ptr<::arrow::fs::FileSystem> filesystem);

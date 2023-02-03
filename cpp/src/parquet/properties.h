@@ -187,7 +187,7 @@ class PARQUET_EXPORT ColumnProperties {
   size_t max_stats_size_;
   int compression_level_;
 };
-
+// TODO: DON WriteProperties
 class PARQUET_EXPORT WriterProperties {
  public:
   class Builder {
@@ -506,7 +506,7 @@ class PARQUET_EXPORT WriterProperties {
     ParquetDataPageVersion data_page_version_;
     std::string created_by_;
     bool integer_annotate_decimal_;
-
+    // TODO: DON here are file-encription properties used by the entire dataset, we want to make this based on DatasetEncryptionConfiguration
     std::shared_ptr<FileEncryptionProperties> file_encryption_properties_;
 
     // Settings used for each column unless overridden in any of the maps below
