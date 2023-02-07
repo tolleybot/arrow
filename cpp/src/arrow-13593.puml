@@ -1,0 +1,45 @@
+@startuml Writer Process
+caller -> dataset.py : write_dataset(..,file_options, ..)
+activate dataset.py 
+note left
+
+if file_options is none 
+it is created from a 
+FileFormat object via
+make_write_options()
+
+end note
+dataset.py -> InMemoryDataset: scanner()
+dataset.py <- InMemoryDataset: Scanner
+note left
+
+if your input data is
+ not a Scanner 
+ (arrow:dataset:scanner c++)
+ create it
+ 
+ end note
+
+dataset.py -> dataset.pyx : _filesystemdataset_write(..,scanner,..)
+ 
+deactivate dataset.py 
+
+
+_filesystemdataset_write -> _filesystemdataset_write : new FileSystemDatasetWriteOptions
+activate _filesystemdataset_write
+note left
+function fills out 
+FileSystemDatasetWriteOptions
+end note
+
+alt if file_visitor is Valid
+  _filesystemdataset_write -> dataset.pyx : _filesystemdataset_write_visitor(..)
+else if file_visitor is None
+  _filesystemdataset_write -> libarrow_dataset.pxd : FileSystemDataset.Write(c_options, c_scanner)
+end
+deactivate _filesystemdataset_write
+
+
+@enduml
+
+
