@@ -31,7 +31,7 @@
 #include "arrow/dataset/type_fwd.h"
 #include "arrow/dataset/visibility.h"
 #include "arrow/io/caching.h"
-#include "arrow/dataset/dataset_encryption_config.h"
+#include "parquet/encryption/dataset_encryption_config.h"
 
 namespace parquet {
 class ParquetFileReader;
@@ -72,6 +72,10 @@ class ARROW_DS_EXPORT ParquetFileFormat : public FileFormat {
   /// Convenience constructor which copies properties from a parquet::ReaderProperties.
   /// memory_pool will be ignored.
   explicit ParquetFileFormat(const parquet::ReaderProperties& reader_properties);
+  /// \brief  A constructor which sets the DatasetEncryptionConfiguration to provide per file
+  /// encryption and decryption properties.
+  explicit ParquetFileFormat(std::shared_ptr<parquet::encryption::DatasetEncryptionConfiguration> encryption_config,
+                            std::shared_ptr<parquet::encryption::DatasetDecryptionConfiguration> decryption_config);
 
   std::string type_name() const override { return kParquetTypeName; }
 
@@ -139,11 +143,17 @@ class ARROW_DS_EXPORT ParquetFileFormat : public FileFormat {
   std::shared_ptr<FileWriteOptions> DefaultWriteOptions() override;
 
 
-  std::shared_ptr<::parquet::FileEncryptionProperties> GetFileEncryptionProperties(
+    std::shared_ptr<::parquet::FileEncryptionProperties> GetFileEncryptionProperties(
       std::string filePath, std::shared_ptr<::arrow::fs::FileSystem> filesystem);
 
-  std::shared_ptr<::parquet::FileDecryptionProperties> GetFileDecryptionProperties(
+    std::shared_ptr<::parquet::FileDecryptionProperties> GetFileDecryptionProperties(
     std::string filePath, std::shared_ptr<::arrow::fs::FileSystem> filesystem);
+
+ private: 
+   // TODO: DON add documentation
+   std::shared_ptr<parquet::encryption::DatasetEncryptionConfiguration> encryption_config_ = nullptr;
+
+   std::shared_ptr<parquet::encryption::DatasetDecryptionConfiguration> decryption_config_ = nullptr;
   
 };
 
