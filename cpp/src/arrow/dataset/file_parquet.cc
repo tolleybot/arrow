@@ -356,11 +356,29 @@ bool ParquetFileFormat::Equals(const FileFormat& other) const {
               other_reader_options.coerce_int96_timestamp_unit);
 }
 
+ParquetFileFormat::ParquetFileFormat(
+    std::shared_ptr<parquet::encryption::DatasetEncryptionConfiguration> encryption_config,
+    std::shared_ptr<parquet::encryption::DatasetEncryptionConfiguration> decryption_config)
+    : FileFormat(std::make_shared<ParquetFragmentScanOptions>()),
+      encryption_config_(encryption_config), decryption_config_(decryption_config) {}
+
 ParquetFileFormat::ParquetFileFormat(const parquet::ReaderProperties& reader_properties)
     : FileFormat(std::make_shared<ParquetFragmentScanOptions>()) {
   auto* default_scan_opts =
       static_cast<ParquetFragmentScanOptions*>(default_fragment_scan_options.get());
   *default_scan_opts->reader_properties = reader_properties;
+}
+
+/// implementatoin of ParquetFileFormat::GetDatasetEncryptionConfiguration
+std::shared_ptr<::parquet::FileEncryptionProperties>
+ParquetFileFormat::GetFileEncryptionProperties(
+    std::string filePath, std::shared_ptr<::arrow::fs::FileSystem> filesystem) {
+  // TODO: DON this does not use the filesystem, we need a different per-file encryption
+  auto file_encryption_properties =
+      encryption_config_->crypto_factory->GetFileEncryptionProperties(
+          *encryption_config_->kms_connection_config.get(),
+          *encryption_config_->encryption_config.get());
+  return file_encryption_properties;
 }
 
 Result<bool> ParquetFileFormat::IsSupported(const FileSource& source) const {
