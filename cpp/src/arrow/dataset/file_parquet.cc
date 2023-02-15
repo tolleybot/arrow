@@ -358,7 +358,7 @@ bool ParquetFileFormat::Equals(const FileFormat& other) const {
 
 ParquetFileFormat::ParquetFileFormat(
     std::shared_ptr<parquet::encryption::DatasetEncryptionConfiguration> encryption_config,
-    std::shared_ptr<parquet::encryption::DatasetEncryptionConfiguration> decryption_config)
+    std::shared_ptr<parquet::encryption::DatasetDecryptionConfiguration> decryption_config)
     : FileFormat(std::make_shared<ParquetFragmentScanOptions>()),
       encryption_config_(encryption_config), decryption_config_(decryption_config) {}
 
