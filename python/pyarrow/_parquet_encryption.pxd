@@ -132,16 +132,16 @@ cdef extern from "arrow/python/parquet_encryption.h" \
             const CKmsConnectionConfig& kms_connection_config,
             const CDecryptionConfiguration& decryption_config)
 
-cdef extern from "dataset_encryption_configuration.h" namespace "arrow::py::parquet::encryption" nogil:
-    cdef cppclass CDatasetEncryptionConfiguration:
-        CDatasetEncryptionConfiguration() except +
-        std::shared_ptr[CCryptoFactory] crypto_factory
-        std::shared_ptr[CKmsConnectionConfig] kms_connection_config
-        std::shared_ptr[CEncryptionConfiguration] encryption_config
 
-cdef extern from "dataset_decryption_configuration.h" namespace "arrow::py::parquet::encryption" nogil:
-    cdef cppclass CDatasetDecryptionConfiguration:
+cdef extern from "parquet/encryption/dataset_encryption_config.h" namespace "parquet::encryption" nogil:
+    cdef cppclass CDatasetEncryptionConfiguration " parquet::encryption::DatasetEncryptionConfiguration":
+        CDatasetEncryptionConfiguration() except +
+        shared_ptr[CCryptoFactory] crypto_factory
+        shared_ptr[CKmsConnectionConfig] kms_connection_config
+        shared_ptr[CEncryptionConfiguration] encryption_config
+
+    cdef cppclass CDatasetDecryptionConfiguration " parquet::encryption::DatasetDecryptionConfiguration":
         CDatasetDecryptionConfiguration() except +
-        std::shared_ptr[CryptoFactory] crypto_factory
-        std::shared_ptr[CKmsConnectionConfig] kms_connection_config
-        std::shared_ptr[CDecryptionConfiguration] decryption_config
+        shared_ptr[CCryptoFactory] crypto_factory
+        shared_ptr[CKmsConnectionConfig] kms_connection_config
+        shared_ptr[CDecryptionConfiguration] decryption_config
