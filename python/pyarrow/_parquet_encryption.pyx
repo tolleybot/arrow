@@ -359,7 +359,7 @@ cdef class CryptoFactory(_Weakrefable):
     """ A factory that produces the low-level FileEncryptionProperties and
     FileDecryptionProperties objects, from the high-level parameters."""
     cdef:
-        unique_ptr[CPyCryptoFactory] factory
+        shared_ptr[CPyCryptoFactory] factory
 
     # Avoid mistakingly creating attributes
     __slots__ = ()
@@ -467,69 +467,37 @@ cdef class CryptoFactory(_Weakrefable):
     def remove_cache_entries_for_all_tokens(self):
         self.factory.get().RemoveCacheEntriesForAllTokens()
 
+    cdef inline shared_ptr[CPyCryptoFactory] unwrap(self) nogil:
+        return self.factory # TODO: DON this might not work due to casting
+
 
 cdef class DatasetEncryptionConfiguration(_Weakrefable):
-    cdef CDatasetEncryptionConfiguration c_config
+    cdef:
+        shared_ptr[CDatasetEncryptionConfiguration] c_config
+
+    # Avoid mistakingly creating attributes
+    __slots__ = ()
 
     def __cinit__(self, CryptoFactory crypto_factory, KmsConnectionConfig kms_connection_config,
-                 EncryptionConfiguration encryption_config):
-        assert crypto_factory is not None, "crypto_factory is required"
-        assert kms_connection_config is not None, "kms_connection_config is required"
-        assert encryption_config is not None, "encryption_config is required"
-        self.c_config = CDatasetEncryptionConfiguration()
-        self.c_config.crypto_factory = crypto_factory
-        self.c_config.kms_connection_config = kms_connection_config
-        self.c_config.encryption_config = encryption_config
+                 EncryptionConfiguration encryption_config): 
+        self.c_config.reset(new CDatasetEncryptionConfiguration())
 
+        self.c_config.get().crypto_factory = static_pointer_cast[CCryptoFactory, CPyCryptoFactory](crypto_factory.unwrap())       
+        self.c_config.get().kms_connection_config = kms_connection_config.unwrap()
+        self.c_config.get().encryption_config = encryption_config.unwrap()
 
-    def __cinit__(self):
-        self.c_config = CDatasetEncryptionConfiguration()
-
-    def get_crypto_factory(self):
-        return <CryptoFactory*>(self.c_config.crypto_factory.get())
-
-    def set_crypto_factory(self, factory):
-        self.c_config.crypto_factory = factory
-
-    def get_kms_connection_config(self):
-        return <KmsConnectionConfig*>(self.c_config.kms_connection_config.get())
-
-    def set_kms_connection_config(self, config):
-        self.c_config.kms_connection_config = config
-
-    def get_encryption_config(self):
-        return <EncryptionConfiguration*>(self.c_config.encryption_config.get())
-
-    def set_encryption_config(self, config):
-        self.c_config.encryption_config = config
 
 cdef class DatasetDecryptionConfiguration(_Weakrefable):
-    cdef CDatasetDecryptionConfiguration c_config
+    cdef:
+        shared_ptr[CDatasetDecryptionConfiguration] c_config
+
+     # Avoid mistakingly creating attributes
+    __slots__ = ()
 
     def __cinit__(self, CryptoFactory crypto_factory, KmsConnectionConfig kms_connection_config,
                  DecryptionConfiguration decryption_config):
-        assert crypto_factory is not None, "crypto_factory is required"
-        assert kms_connection_config is not None, "kms_connection_config is required"
-        assert decryption_config is not None, "decryption_config is required"
-        self.c_config = CDatasetDecryptionConfiguration()
-        self.c_config.crypto_factory = crypto_factory
-        self.c_config.kms_connection_config = kms_connection_config
-        self.c_config.decryption_config = decryption_config
-
-    def get_crypto_factory(self):
-        return <CryptoFactory*>(self.c_config.crypto_factory.get())
-
-    def set_crypto_factory(self, factory):
-        self.c_config.crypto_factory = factory
-
-    def get_kms_connection_config(self):
-        return <KmsConnectionConfig*>(self.c_config.kms_connection_config.get())
-
-    def set_kms_connection_config(self, config):
-        self.c_config.kms_connection_config = config
-
-    def get_decryption_config(self):
-        return <DecryptionConfiguration*>(self.c_config.decryption_config.get())
-
-    def set_decryption_config(self, config):
-        self.c_config.decryption_config = config
+        self.c_config.reset(new CDatasetDecryptionConfiguration())
+      
+        self.c_config.get().crypto_factory = static_pointer_cast[CCryptoFactory, CPyCryptoFactory](crypto_factory.unwrap())       
+        self.c_config.get().kms_connection_config = kms_connection_config.unwrap()
+        self.c_config.get().decryption_config = decryption_config.unwrap()
