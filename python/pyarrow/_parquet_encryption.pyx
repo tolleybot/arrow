@@ -480,6 +480,20 @@ cdef class DatasetEncryptionConfiguration(_Weakrefable):
 
     def __cinit__(self, CryptoFactory crypto_factory, KmsConnectionConfig kms_connection_config,
                  EncryptionConfiguration encryption_config): 
+        """Intialize structure.
+
+        Parameters
+        ----------
+        crypto_factory : CryptoFactory
+            CryptoFactory object
+
+        kms_connection_config : KmsConnectionConfig
+            Configuration of connection to KMS
+
+        encryption_config : EncryptionConfiguration
+            Dataset Configuration for encryption
+
+        """
         self.c_config.reset(new CDatasetEncryptionConfiguration())
 
         self.c_config.get().crypto_factory = static_pointer_cast[CCryptoFactory, CPyCryptoFactory](crypto_factory.unwrap())       
@@ -496,6 +510,20 @@ cdef class DatasetDecryptionConfiguration(_Weakrefable):
 
     def __cinit__(self, CryptoFactory crypto_factory, KmsConnectionConfig kms_connection_config,
                  DecryptionConfiguration decryption_config):
+        """Intialize structure.
+
+        Parameters
+        ----------
+        crypto_factory : CryptoFactory
+            CryptoFactory object
+
+        kms_connection_config : KmsConnectionConfig
+            Configuration of connection to KMS
+
+        decryption_config : DecryptionConfiguration
+            Dataset Configuration for decription
+
+        """
         self.c_config.reset(new CDatasetDecryptionConfiguration())
       
         self.c_config.get().crypto_factory = static_pointer_cast[CCryptoFactory, CPyCryptoFactory](crypto_factory.unwrap())       
