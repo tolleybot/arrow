@@ -480,6 +480,7 @@ cdef extern from "arrow/api.h" namespace "arrow" nogil:
         vector[shared_ptr[CField]] GetAllFieldsByName(const c_string& name)
         int GetFieldIndex(const c_string& name)
         vector[int] GetAllFieldIndices(const c_string& name)
+        const vector[shared_ptr[CField]] fields()
         int num_fields()
         c_string ToString()
 
@@ -800,6 +801,8 @@ cdef extern from "arrow/api.h" namespace "arrow" nogil:
             const shared_ptr[CSchema]& schema, int64_t num_rows,
             const vector[shared_ptr[CArray]]& columns)
 
+        CResult[shared_ptr[CStructArray]] ToStructArray() const
+
         @staticmethod
         CResult[shared_ptr[CRecordBatch]] FromStructArray(
             const shared_ptr[CArray]& array)
@@ -811,6 +814,8 @@ cdef extern from "arrow/api.h" namespace "arrow" nogil:
         const c_string& column_name(int i)
 
         const vector[shared_ptr[CArray]]& columns()
+
+        CResult[shared_ptr[CRecordBatch]] SelectColumns(const vector[int]&)
 
         int num_columns()
         int64_t num_rows()
@@ -2019,6 +2024,11 @@ cdef extern from "arrow/compute/api.h" namespace "arrow::compute" nogil:
         int64_t ndigits
         CRoundMode round_mode
 
+    cdef cppclass CRoundBinaryOptions \
+            "arrow::compute::RoundBinaryOptions"(CFunctionOptions):
+        CRoundBinaryOptions(CRoundMode round_mode)
+        CRoundMode round_mode
+
     ctypedef enum CCalendarUnit \
             "arrow::compute::CalendarUnit":
         CCalendarUnit_NANOSECOND \
@@ -2484,15 +2494,18 @@ cdef extern from * namespace "arrow::compute":
             const CBuffer& buffer)
 
 
-cdef extern from "arrow/compute/exec/aggregate.h" namespace \
-        "arrow::compute::internal" nogil:
+cdef extern from "arrow/compute/exec/groupby.h" namespace \
+        "arrow::compute" nogil:
     cdef cppclass CAggregate "arrow::compute::Aggregate":
         c_string function
         shared_ptr[CFunctionOptions] options
+        vector[CFieldRef] target
+        c_string name
 
-    CResult[CDatum] GroupBy(const vector[CDatum]& arguments,
-                            const vector[CDatum]& keys,
-                            const vector[CAggregate]& aggregates)
+    CResult[shared_ptr[CTable]] CTableGroupBy "arrow::compute::TableGroupBy"(
+        shared_ptr[CTable] table,
+        vector[CAggregate] aggregates,
+        vector[CFieldRef] keys)
 
 
 cdef extern from * namespace "arrow::compute":
@@ -2627,7 +2640,7 @@ cdef extern from "arrow/compute/exec/exec_plan.h" namespace "arrow::compute" nog
         @staticmethod
         CResult[shared_ptr[CExecPlan]] Make(CExecContext* exec_context)
 
-        CStatus StartProducing()
+        void StartProducing()
         CStatus Validate()
         CStatus StopProducing()
 
@@ -2805,12 +2818,20 @@ cdef extern from "arrow/util/byte_size.h" namespace "arrow::util" nogil:
 
 ctypedef PyObject* CallbackUdf(object user_function, const CScalarUdfContext& context, object inputs)
 
-cdef extern from "arrow/python/udf.h" namespace "arrow::py":
+
+cdef extern from "arrow/api.h" namespace "arrow" nogil:
+
+    cdef cppclass CRecordBatchIterator "arrow::RecordBatchIterator"(
+            CIterator[shared_ptr[CRecordBatch]]):
+        pass
+
+
+cdef extern from "arrow/python/udf.h" namespace "arrow::py" nogil:
     cdef cppclass CScalarUdfContext" arrow::py::ScalarUdfContext":
         CMemoryPool *pool
         int64_t batch_length
 
-    cdef cppclass CScalarUdfOptions" arrow::py::ScalarUdfOptions":
+    cdef cppclass CUdfOptions" arrow::py::UdfOptions":
         c_string func_name
         CArity arity
         CFunctionDoc func_doc
@@ -2818,4 +2839,12 @@ cdef extern from "arrow/python/udf.h" namespace "arrow::py":
         shared_ptr[CDataType] output_type
 
     CStatus RegisterScalarFunction(PyObject* function,
-                                   function[CallbackUdf] wrapper, const CScalarUdfOptions& options)
+                                   function[CallbackUdf] wrapper, const CUdfOptions& options,
+                                   CFunctionRegistry* registry)
+
+    CStatus RegisterTabularFunction(PyObject* function,
+                                    function[CallbackUdf] wrapper, const CUdfOptions& options,
+                                    CFunctionRegistry* registry)
+
+    CResult[shared_ptr[CRecordBatchReader]] CallTabularFunction(
+        const c_string& func_name, const vector[CDatum]& args, CFunctionRegistry* registry)

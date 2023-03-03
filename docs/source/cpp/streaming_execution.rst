@@ -278,7 +278,7 @@ Functions
      * ``approx_count_distinct``
 
  * The functions above should be referenced using the URI
-   ``https://github.com/apache/arrow/blob/master/format/substrait/extension_types.yaml``
+   ``https://github.com/apache/arrow/blob/main/format/substrait/extension_types.yaml``
      * Alternatively, the URI can be left completely empty and Acero will match
        based only on function name.  This fallback mechanism is non-standard and should
        be avoided if possible.
@@ -404,10 +404,6 @@ their completion::
 
 Constructing ``ExecPlan`` objects
 =================================
-
-.. warning::
-
-    The following will be superceded by construction from Compute IR, see ARROW-14074.
 
 None of the concrete implementations of :class:`ExecNode` are exposed
 in headers, so they can't be constructed directly outside the

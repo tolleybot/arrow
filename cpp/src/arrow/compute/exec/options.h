@@ -111,8 +111,18 @@ template <typename ItMaker>
 class ARROW_EXPORT SchemaSourceNodeOptions : public ExecNodeOptions {
  public:
   SchemaSourceNodeOptions(std::shared_ptr<Schema> schema, ItMaker it_maker,
-                          arrow::internal::Executor* io_executor = NULLPTR)
-      : schema(schema), it_maker(std::move(it_maker)), io_executor(io_executor) {}
+                          arrow::internal::Executor* io_executor)
+      : schema(schema),
+        it_maker(std::move(it_maker)),
+        io_executor(io_executor),
+        requires_io(true) {}
+
+  SchemaSourceNodeOptions(std::shared_ptr<Schema> schema, ItMaker it_maker,
+                          bool requires_io = false)
+      : schema(schema),
+        it_maker(std::move(it_maker)),
+        io_executor(NULLPTR),
+        requires_io(requires_io) {}
 
   /// \brief The schema of the record batches from the iterator
   std::shared_ptr<Schema> schema;
@@ -122,8 +132,13 @@ class ARROW_EXPORT SchemaSourceNodeOptions : public ExecNodeOptions {
 
   /// \brief The executor to use for scanning the iterator
   ///
-  /// Defaults to the default I/O executor.
+  /// Defaults to the default I/O executor.  Only used if requires_io is true.
+  /// If requires_io is false then this MUST be nullptr.
   arrow::internal::Executor* io_executor;
+
+  /// \brief If true then items will be fetched from the iterator on a dedicated I/O
+  ///        thread to keep I/O off the CPU thread
+  bool requires_io;
 };
 
 class ARROW_EXPORT RecordBatchReaderSourceNodeOptions : public ExecNodeOptions {
@@ -152,7 +167,13 @@ using ExecBatchIteratorMaker = std::function<Iterator<std::shared_ptr<ExecBatch>
 /// \brief An extended Source node which accepts a schema and exec-batches
 class ARROW_EXPORT ExecBatchSourceNodeOptions
     : public SchemaSourceNodeOptions<ExecBatchIteratorMaker> {
+ public:
   using SchemaSourceNodeOptions::SchemaSourceNodeOptions;
+  ExecBatchSourceNodeOptions(std::shared_ptr<Schema> schema,
+                             std::vector<ExecBatch> batches,
+                             ::arrow::internal::Executor* io_executor);
+  ExecBatchSourceNodeOptions(std::shared_ptr<Schema> schema,
+                             std::vector<ExecBatch> batches, bool requires_io = false);
 };
 
 using RecordBatchIteratorMaker = std::function<Iterator<std::shared_ptr<RecordBatch>>()>;
@@ -173,6 +194,14 @@ class ARROW_EXPORT FilterNodeOptions : public ExecNodeOptions {
       : filter_expression(std::move(filter_expression)) {}
 
   Expression filter_expression;
+};
+
+class ARROW_EXPORT FetchNodeOptions : public ExecNodeOptions {
+ public:
+  static constexpr std::string_view kName = "fetch";
+  FetchNodeOptions(int64_t offset, int64_t count) : offset(offset), count(count) {}
+  int64_t offset;
+  int64_t count;
 };
 
 /// \brief Make a node which executes expressions on input batches, producing new batches.
@@ -244,25 +273,30 @@ struct ARROW_EXPORT BackpressureOptions {
 
 /// \brief Add a sink node which forwards to an AsyncGenerator<ExecBatch>
 ///
-/// Emitted batches will not be ordered.
+/// Emitted batches will only be ordered if there is a meaningful ordering
+/// and sequence_output is not set to false.
 class ARROW_EXPORT SinkNodeOptions : public ExecNodeOptions {
  public:
   explicit SinkNodeOptions(std::function<Future<std::optional<ExecBatch>>()>* generator,
                            std::shared_ptr<Schema>* schema,
                            BackpressureOptions backpressure = {},
-                           BackpressureMonitor** backpressure_monitor = NULLPTR)
+                           BackpressureMonitor** backpressure_monitor = NULLPTR,
+                           std::optional<bool> sequence_output = std::nullopt)
       : generator(generator),
         schema(schema),
         backpressure(backpressure),
-        backpressure_monitor(backpressure_monitor) {}
+        backpressure_monitor(backpressure_monitor),
+        sequence_output(sequence_output) {}
 
   explicit SinkNodeOptions(std::function<Future<std::optional<ExecBatch>>()>* generator,
                            BackpressureOptions backpressure = {},
-                           BackpressureMonitor** backpressure_monitor = NULLPTR)
+                           BackpressureMonitor** backpressure_monitor = NULLPTR,
+                           std::optional<bool> sequence_output = std::nullopt)
       : generator(generator),
         schema(NULLPTR),
         backpressure(std::move(backpressure)),
-        backpressure_monitor(backpressure_monitor) {}
+        backpressure_monitor(backpressure_monitor),
+        sequence_output(sequence_output) {}
 
   /// \brief A pointer to a generator of batches.
   ///
@@ -286,6 +320,10 @@ class ARROW_EXPORT SinkNodeOptions : public ExecNodeOptions {
   /// the amount of data currently queued in the sink node.  This is an optional utility
   /// and backpressure can be applied even if this is not used.
   BackpressureMonitor** backpressure_monitor;
+  /// \brief Controls whether batches should be emitted immediately or sequenced in order
+  ///
+  /// \see QueryOptions for more details
+  std::optional<bool> sequence_output;
 };
 
 /// \brief Control used by a SinkNodeConsumer to pause & resume
@@ -321,6 +359,9 @@ class ARROW_EXPORT SinkNodeConsumer {
   /// \brief Signal to the consumer that the last batch has been delivered
   ///
   /// The returned future should only finish when all outstanding tasks have completed
+  ///
+  /// If the plan is ended early or aborts due to an error then this will not be
+  /// called.
   virtual Future<> Finish() = 0;
 };
 
@@ -328,8 +369,11 @@ class ARROW_EXPORT SinkNodeConsumer {
 class ARROW_EXPORT ConsumingSinkNodeOptions : public ExecNodeOptions {
  public:
   explicit ConsumingSinkNodeOptions(std::shared_ptr<SinkNodeConsumer> consumer,
-                                    std::vector<std::string> names = {})
-      : consumer(std::move(consumer)), names(std::move(names)) {}
+                                    std::vector<std::string> names = {},
+                                    std::optional<bool> sequence_output = std::nullopt)
+      : consumer(std::move(consumer)),
+        names(std::move(names)),
+        sequence_output(sequence_output) {}
 
   std::shared_ptr<SinkNodeConsumer> consumer;
   /// \brief Names to rename the sink's schema fields to
@@ -337,6 +381,10 @@ class ARROW_EXPORT ConsumingSinkNodeOptions : public ExecNodeOptions {
   /// If specified then names must be provided for all fields. Currently, only a flat
   /// schema is supported (see ARROW-15901).
   std::vector<std::string> names;
+  /// \brief Controls whether batches should be emitted immediately or sequenced in order
+  ///
+  /// \see QueryOptions for more details
+  std::optional<bool> sequence_output;
 };
 
 /// \brief Make a node which sorts rows passed through it
@@ -519,11 +567,17 @@ class ARROW_EXPORT AsofJoinNodeOptions : public ExecNodeOptions {
   AsofJoinNodeOptions(std::vector<Keys> input_keys, int64_t tolerance)
       : input_keys(std::move(input_keys)), tolerance(tolerance) {}
 
-  /// \brief AsofJoin keys per input table.
+  /// \brief AsofJoin keys per input table. At least two keys must be given. The first key
+  /// corresponds to a left table and all other keys correspond to right tables for the
+  /// as-of-join.
   ///
   /// \see `Keys` for details.
   std::vector<Keys> input_keys;
-  /// \brief Tolerance for inexact "on" key matching.  Must be non-negative.
+  /// \brief Tolerance for inexact "on" key matching. A right row is considered a match
+  /// with the left row if `right.on - left.on <= tolerance`. The `tolerance` may be:
+  /// - negative, in which case a past-as-of-join occurs;
+  /// - or positive, in which case a future-as-of-join occurs;
+  /// - or zero, in which case an exact-as-of-join occurs.
   ///
   /// The tolerance is interpreted in the same units as the "on" key.
   int64_t tolerance;
@@ -550,10 +604,15 @@ class ARROW_EXPORT SelectKSinkNodeOptions : public SinkNodeOptions {
 /// a table pointer.
 class ARROW_EXPORT TableSinkNodeOptions : public ExecNodeOptions {
  public:
-  explicit TableSinkNodeOptions(std::shared_ptr<Table>* output_table)
-      : output_table(output_table) {}
+  explicit TableSinkNodeOptions(std::shared_ptr<Table>* output_table,
+                                std::optional<bool> sequence_output = std::nullopt)
+      : output_table(output_table), sequence_output(sequence_output) {}
 
   std::shared_ptr<Table>* output_table;
+  /// \brief Controls whether batches should be emitted immediately or sequenced in order
+  ///
+  /// \see QueryOptions for more details
+  std::optional<bool> sequence_output;
 };
 
 /// @}

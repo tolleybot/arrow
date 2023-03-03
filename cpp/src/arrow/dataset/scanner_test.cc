@@ -32,7 +32,7 @@
 #include "arrow/compute/exec/test_util.h"
 #include "arrow/dataset/dataset_internal.h"
 #include "arrow/dataset/plan.h"
-#include "arrow/dataset/test_util.h"
+#include "arrow/dataset/test_util_internal.h"
 #include "arrow/record_batch.h"
 #include "arrow/table.h"
 #include "arrow/testing/async_test_util.h"
@@ -96,18 +96,18 @@ TEST(BasicEvolution, MissingColumn) {
   ASSERT_EQ(expected_guarantee, guarantee);
 
   // Basic strategy should drop missing fields from selection
-  ASSERT_OK_AND_ASSIGN(std::vector<FragmentSelectionColumn> devolved_selection,
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<FragmentSelection> devolved_selection,
                        fragment_strategy->DevolveSelection(selection));
-  ASSERT_EQ(1, devolved_selection.size());
-  ASSERT_EQ(FieldPath({0}), devolved_selection[0].path);
-  ASSERT_EQ(*int32(), *devolved_selection[0].requested_type);
+  ASSERT_EQ(1, devolved_selection->columns().size());
+  ASSERT_EQ(FieldPath({0}), devolved_selection->columns()[0].path);
+  ASSERT_EQ(*int32(), *devolved_selection->columns()[0].requested_type);
 
   // Basic strategy should append null column to batches for missing column
   std::shared_ptr<RecordBatch> devolved_batch =
       RecordBatchFromJSON(schema({field("A", int32())}), R"([[1], [2], [3]])");
   ASSERT_OK_AND_ASSIGN(
       compute::ExecBatch evolved_batch,
-      fragment_strategy->EvolveBatch(devolved_batch, selection, devolved_selection));
+      fragment_strategy->EvolveBatch(devolved_batch, selection, *devolved_selection));
   ASSERT_EQ(2, evolved_batch.values.size());
   AssertArraysEqual(*devolved_batch->column(0), *evolved_batch[0].make_array());
   ASSERT_EQ(*MakeNullScalar(int64()), *evolved_batch.values[1].scalar());
@@ -140,20 +140,22 @@ TEST(BasicEvolution, ReorderedColumns) {
   ASSERT_EQ(expected_guarantee, guarantee);
 
   // Devolved selection should have correct indices
-  ASSERT_OK_AND_ASSIGN(std::vector<FragmentSelectionColumn> devolved_selection,
+  ASSERT_OK_AND_ASSIGN(std::unique_ptr<FragmentSelection> devolved_selection,
                        fragment_strategy->DevolveSelection(selection));
-  ASSERT_EQ(2, devolved_selection.size());
-  ASSERT_EQ(FieldPath({2}), devolved_selection[0].path);
-  ASSERT_EQ(FieldPath({0}), devolved_selection[1].path);
-  ASSERT_EQ(*int32(), *devolved_selection[0].requested_type);
-  ASSERT_EQ(*int64(), *devolved_selection[1].requested_type);
+  const std::vector<FragmentSelectionColumn>& devolved_cols =
+      devolved_selection->columns();
+  ASSERT_EQ(2, devolved_cols.size());
+  ASSERT_EQ(FieldPath({2}), devolved_cols[0].path);
+  ASSERT_EQ(FieldPath({0}), devolved_cols[1].path);
+  ASSERT_EQ(*int32(), *devolved_cols[0].requested_type);
+  ASSERT_EQ(*int64(), *devolved_cols[1].requested_type);
 
   // Basic strategy should append null column to batches for missing column
   std::shared_ptr<RecordBatch> devolved_batch = RecordBatchFromJSON(
       schema({field("C", int64()), field("A", int32())}), R"([[1,4], [2,5], [3,6]])");
   ASSERT_OK_AND_ASSIGN(
       compute::ExecBatch evolved_batch,
-      fragment_strategy->EvolveBatch(devolved_batch, selection, devolved_selection));
+      fragment_strategy->EvolveBatch(devolved_batch, selection, *devolved_selection));
   ASSERT_EQ(2, evolved_batch.values.size());
   AssertArraysEqual(*devolved_batch->column(0), *evolved_batch[0].make_array());
   AssertArraysEqual(*devolved_batch->column(1), *evolved_batch[1].make_array());
@@ -460,7 +462,7 @@ std::ostream& operator<<(std::ostream& out, const ScannerTestParams& params) {
   return out;
 }
 
-constexpr int kRowsPerTestBatch = 1024;
+constexpr int kRowsPerTestBatch = 16;
 
 std::shared_ptr<Schema> ScannerTestSchema() {
   return schema({field("row_num", int32()), field("filterable", int16()),
@@ -689,47 +691,94 @@ TEST(TestNewScanner, NestedRead) {
     ASSERT_EQ(*int32(), *batch->column(0)->type());
   }
   const FragmentScanRequest& seen_request = test_dataset->fragments_[0]->seen_request_;
-  ASSERT_EQ(1, seen_request.columns.size());
-  ASSERT_EQ(FieldPath({2, 0}), seen_request.columns[0].path);
-  ASSERT_EQ(*int32(), *seen_request.columns[0].requested_type);
-  ASSERT_EQ(0, seen_request.columns[0].selection_index);
+  ASSERT_EQ(1, seen_request.fragment_selection->columns().size());
+  ASSERT_EQ(FieldPath({2, 0}), seen_request.fragment_selection->columns()[0].path);
+  ASSERT_EQ(*int32(), *seen_request.fragment_selection->columns()[0].requested_type);
 }
 
 std::shared_ptr<MockDataset> MakePartitionSkipDataset() {
   std::shared_ptr<Schema> test_schema = ScannerTestSchema();
   MockDatasetBuilder builder(test_schema);
   builder.AddFragment(test_schema, /*inspection=*/nullptr,
-                      greater(field_ref({1}), literal(50)));
-  builder.AddBatch(MakeTestBatch(0));
+                      equal(field_ref({1}), literal(100)));
+  std::shared_ptr<RecordBatch> batch = MakeTestBatch(0);
+  EXPECT_OK_AND_ASSIGN(batch, batch->RemoveColumn(1));
+  builder.AddBatch(std::move(batch));
   builder.AddFragment(test_schema, /*inspection=*/nullptr,
-                      less_equal(field_ref({1}), literal(50)));
-  builder.AddBatch(MakeTestBatch(1));
+                      equal(field_ref({1}), literal(50)));
+  batch = MakeTestBatch(1);
+  EXPECT_OK_AND_ASSIGN(batch, batch->RemoveColumn(1));
+  builder.AddBatch(std::move(batch));
+  return builder.Finish();
+}
+
+// Make a dataset where the dataset schema expects the "filterable" column to
+// be a date but the partitioning interprets it as an integer
+std::shared_ptr<MockDataset> MakeInvalidPartitionSkipDataset() {
+  std::shared_ptr<Schema> test_schema = ScannerTestSchema();
+  EXPECT_OK_AND_ASSIGN(test_schema,
+                       test_schema->SetField(1, field("filterable", date64())));
+  MockDatasetBuilder builder(test_schema);
+  builder.AddFragment(test_schema, /*inspection=*/nullptr,
+                      equal(field_ref({1}), literal(100)));
+  std::shared_ptr<RecordBatch> batch = MakeTestBatch(0);
+  EXPECT_OK_AND_ASSIGN(batch, batch->RemoveColumn(1));
+  builder.AddBatch(std::move(batch));
   return builder.Finish();
 }
 
 TEST(TestNewScanner, PartitionSkip) {
   internal::Initialize();
-  std::shared_ptr<MockDataset> test_dataset = MakePartitionSkipDataset();
-  test_dataset->DeliverBatchesInOrder(false);
+  {
+    ARROW_SCOPED_TRACE("Skip second batch");
+    std::shared_ptr<MockDataset> test_dataset = MakePartitionSkipDataset();
+    test_dataset->DeliverBatchesInOrder(false);
 
-  ScanV2Options options(test_dataset);
-  options.columns = ScanV2Options::AllColumns(*test_dataset->schema());
-  options.filter = greater(field_ref("filterable"), literal(75));
+    ScanV2Options options(test_dataset);
+    options.columns = ScanV2Options::AllColumns(*test_dataset->schema());
+    options.filter = greater(field_ref("filterable"), literal(75));
 
-  ASSERT_OK_AND_ASSIGN(std::vector<std::shared_ptr<RecordBatch>> batches,
-                       compute::DeclarationToBatches({"scan2", options}));
-  ASSERT_EQ(1, batches.size());
-  AssertBatchesEqual(*MakeTestBatch(0), *batches[0]);
+    ASSERT_OK_AND_ASSIGN(std::vector<std::shared_ptr<RecordBatch>> batches,
+                         compute::DeclarationToBatches({"scan2", options}));
+    ASSERT_EQ(1, batches.size());
+    std::shared_ptr<RecordBatch> expected = MakeTestBatch(0);
+    ASSERT_OK_AND_ASSIGN(expected, expected->SetColumn(1, field("filterable", int16()),
+                                                       ConstantArrayGenerator::Int16(
+                                                           expected->num_rows(), 100)));
+    AssertBatchesEqual(*expected, *batches[0]);
+  }
 
-  test_dataset = MakePartitionSkipDataset();
-  test_dataset->DeliverBatchesInOrder(false);
-  options = ScanV2Options(test_dataset);
-  options.columns = ScanV2Options::AllColumns(*test_dataset->schema());
-  options.filter = less(field_ref("filterable"), literal(25));
+  {
+    ARROW_SCOPED_TRACE("Skip first batch");
+    std::shared_ptr<MockDataset> test_dataset = MakePartitionSkipDataset();
+    test_dataset->DeliverBatchesInOrder(false);
+    ScanV2Options options = ScanV2Options(test_dataset);
+    options.columns = ScanV2Options::AllColumns(*test_dataset->schema());
+    options.filter = less(field_ref("filterable"), literal(75));
 
-  ASSERT_OK_AND_ASSIGN(batches, compute::DeclarationToBatches({"scan2", options}));
-  ASSERT_EQ(1, batches.size());
-  AssertBatchesEqual(*MakeTestBatch(1), *batches[0]);
+    ASSERT_OK_AND_ASSIGN(std::vector<std::shared_ptr<RecordBatch>> batches,
+                         compute::DeclarationToBatches({"scan2", options}));
+    ASSERT_EQ(1, batches.size());
+    std::shared_ptr<RecordBatch> expected = MakeTestBatch(1);
+    ASSERT_OK_AND_ASSIGN(expected, expected->SetColumn(1, field("filterable", int16()),
+                                                       ConstantArrayGenerator::Int16(
+                                                           expected->num_rows(), 50)));
+    AssertBatchesEqual(*expected, *batches[0]);
+  }
+
+  {
+    ARROW_SCOPED_TRACE("Partitioning doesn't agree with dataset schema");
+    std::shared_ptr<MockDataset> test_dataset = MakeInvalidPartitionSkipDataset();
+    test_dataset->DeliverBatchesInOrder(false);
+    ScanV2Options options = ScanV2Options(test_dataset);
+    options.columns = ScanV2Options::AllColumns(*test_dataset->schema());
+
+    EXPECT_RAISES_WITH_MESSAGE_THAT(
+        Invalid,
+        ::testing::HasSubstr(
+            "The dataset schema defines the field FieldRef.FieldPath(1)"),
+        compute::DeclarationToBatches({"scan2", options}));
+  }
 }
 
 TEST(TestNewScanner, NoFragments) {
@@ -2151,7 +2200,7 @@ struct TestPlan {
 
   Future<std::vector<compute::ExecBatch>> Run() {
     RETURN_NOT_OK(plan->Validate());
-    RETURN_NOT_OK(plan->StartProducing());
+    plan->StartProducing();
 
     auto collected_fut = CollectAsyncGenerator(sink_gen);
 
@@ -2570,18 +2619,15 @@ TEST(ScanNode, MinimalEndToEnd) {
 
   // finally, pipe the project node into a sink node
   AsyncGenerator<std::optional<compute::ExecBatch>> sink_gen;
-  ASSERT_OK_AND_ASSIGN(compute::ExecNode * sink,
-                       compute::MakeExecNode("ordered_sink", plan.get(), {project},
-                                             compute::SinkNodeOptions{&sink_gen}));
-
-  ASSERT_THAT(plan->sinks(), ElementsAre(sink));
+  ASSERT_OK(compute::MakeExecNode("ordered_sink", plan.get(), {project},
+                                  compute::SinkNodeOptions{&sink_gen}));
 
   // translate sink_gen (async) to sink_reader (sync)
   std::shared_ptr<RecordBatchReader> sink_reader = compute::MakeGeneratorReader(
       schema({field("a * 2", int32())}), std::move(sink_gen), exec_context.memory_pool());
 
   // start the ExecPlan
-  ASSERT_OK(plan->StartProducing());
+  plan->StartProducing();
 
   // collect sink_reader into a Table
   ASSERT_OK_AND_ASSIGN(auto collected, Table::FromRecordBatchReader(sink_reader.get()));
@@ -2673,11 +2719,8 @@ TEST(ScanNode, MinimalScalarAggEndToEnd) {
 
   // finally, pipe the aggregate node into a sink node
   AsyncGenerator<std::optional<compute::ExecBatch>> sink_gen;
-  ASSERT_OK_AND_ASSIGN(compute::ExecNode * sink,
-                       compute::MakeExecNode("sink", plan.get(), {aggregate},
-                                             compute::SinkNodeOptions{&sink_gen}));
-
-  ASSERT_THAT(plan->sinks(), ElementsAre(sink));
+  ASSERT_OK(compute::MakeExecNode("sink", plan.get(), {aggregate},
+                                  compute::SinkNodeOptions{&sink_gen}));
 
   // translate sink_gen (async) to sink_reader (sync)
   std::shared_ptr<RecordBatchReader> sink_reader =
@@ -2685,7 +2728,7 @@ TEST(ScanNode, MinimalScalarAggEndToEnd) {
                                    std::move(sink_gen), exec_context.memory_pool());
 
   // start the ExecPlan
-  ASSERT_OK(plan->StartProducing());
+  plan->StartProducing();
 
   // collect sink_reader into a Table
   ASSERT_OK_AND_ASSIGN(auto collected, Table::FromRecordBatchReader(sink_reader.get()));
@@ -2766,11 +2809,8 @@ TEST(ScanNode, MinimalGroupedAggEndToEnd) {
 
   // finally, pipe the aggregate node into a sink node
   AsyncGenerator<std::optional<compute::ExecBatch>> sink_gen;
-  ASSERT_OK_AND_ASSIGN(compute::ExecNode * sink,
-                       compute::MakeExecNode("sink", plan.get(), {aggregate},
-                                             compute::SinkNodeOptions{&sink_gen}));
-
-  ASSERT_THAT(plan->sinks(), ElementsAre(sink));
+  ASSERT_OK(compute::MakeExecNode("sink", plan.get(), {aggregate},
+                                  compute::SinkNodeOptions{&sink_gen}));
 
   // translate sink_gen (async) to sink_reader (sync)
   std::shared_ptr<RecordBatchReader> sink_reader = compute::MakeGeneratorReader(
@@ -2778,7 +2818,7 @@ TEST(ScanNode, MinimalGroupedAggEndToEnd) {
       exec_context.memory_pool());
 
   // start the ExecPlan
-  ASSERT_OK(plan->StartProducing());
+  plan->StartProducing();
 
   // collect sink_reader into a Table
   ASSERT_OK_AND_ASSIGN(auto collected, Table::FromRecordBatchReader(sink_reader.get()));

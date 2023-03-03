@@ -581,64 +581,64 @@ tasks:
       - libarrow-dataset-dev_{no_rc_version}-1_[a-z0-9]+.deb
       - libarrow-dataset-glib-dev_{no_rc_version}-1_[a-z0-9]+.deb
       - libarrow-dataset-glib-doc_{no_rc_version}-1_[a-z0-9]+.deb
-      - libarrow-dataset-glib1100-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
-      - libarrow-dataset-glib1100_{no_rc_version}-1_[a-z0-9]+.deb
-      - libarrow-dataset1100-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
-      - libarrow-dataset1100_{no_rc_version}-1_[a-z0-9]+.deb
+      - libarrow-dataset-glib1200-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
+      - libarrow-dataset-glib1200_{no_rc_version}-1_[a-z0-9]+.deb
+      - libarrow-dataset1200-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
+      - libarrow-dataset1200_{no_rc_version}-1_[a-z0-9]+.deb
       - libarrow-dev_{no_rc_version}-1_[a-z0-9]+.deb
     {% if architecture == "amd64" %}
       - libarrow-flight-dev_{no_rc_version}-1_[a-z0-9]+.deb
       - libarrow-flight-glib-dev_{no_rc_version}-1_[a-z0-9]+.deb
       - libarrow-flight-glib-doc_{no_rc_version}-1_[a-z0-9]+.deb
-      - libarrow-flight-glib1100-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
-      - libarrow-flight-glib1100_{no_rc_version}-1_[a-z0-9]+.deb
+      - libarrow-flight-glib1200-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
+      - libarrow-flight-glib1200_{no_rc_version}-1_[a-z0-9]+.deb
       - libarrow-flight-sql-dev_{no_rc_version}-1_[a-z0-9]+.deb
       - libarrow-flight-sql-glib-dev_{no_rc_version}-1_[a-z0-9]+.deb
       - libarrow-flight-sql-glib-doc_{no_rc_version}-1_[a-z0-9]+.deb
-      - libarrow-flight-sql-glib1100-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
-      - libarrow-flight-sql-glib1100_{no_rc_version}-1_[a-z0-9]+.deb
-      - libarrow-flight-sql1100-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
-      - libarrow-flight-sql1100_{no_rc_version}-1_[a-z0-9]+.deb
-      - libarrow-flight1100-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
-      - libarrow-flight1100_{no_rc_version}-1_[a-z0-9]+.deb
+      - libarrow-flight-sql-glib1200-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
+      - libarrow-flight-sql-glib1200_{no_rc_version}-1_[a-z0-9]+.deb
+      - libarrow-flight-sql1200-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
+      - libarrow-flight-sql1200_{no_rc_version}-1_[a-z0-9]+.deb
+      - libarrow-flight1200-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
+      - libarrow-flight1200_{no_rc_version}-1_[a-z0-9]+.deb
     {% endif %}
       - libarrow-glib-dev_{no_rc_version}-1_[a-z0-9]+.deb
       - libarrow-glib-doc_{no_rc_version}-1_[a-z0-9]+.deb
-      - libarrow-glib1100-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
-      - libarrow-glib1100_{no_rc_version}-1_[a-z0-9]+.deb
-      - libarrow1100-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
-      - libarrow1100_{no_rc_version}-1_[a-z0-9]+.deb
+      - libarrow-glib1200-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
+      - libarrow-glib1200_{no_rc_version}-1_[a-z0-9]+.deb
+      - libarrow1200-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
+      - libarrow1200_{no_rc_version}-1_[a-z0-9]+.deb
       - libgandiva-dev_{no_rc_version}-1_[a-z0-9]+.deb
       - libgandiva-glib-dev_{no_rc_version}-1_[a-z0-9]+.deb
       - libgandiva-glib-doc_{no_rc_version}-1_[a-z0-9]+.deb
-      - libgandiva-glib1100-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
-      - libgandiva-glib1100_{no_rc_version}-1_[a-z0-9]+.deb
-      - libgandiva1100-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
-      - libgandiva1100_{no_rc_version}-1_[a-z0-9]+.deb
+      - libgandiva-glib1200-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
+      - libgandiva-glib1200_{no_rc_version}-1_[a-z0-9]+.deb
+      - libgandiva1200-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
+      - libgandiva1200_{no_rc_version}-1_[a-z0-9]+.deb
       - libparquet-dev_{no_rc_version}-1_[a-z0-9]+.deb
       - libparquet-glib-dev_{no_rc_version}-1_[a-z0-9]+.deb
       - libparquet-glib-doc_{no_rc_version}-1_[a-z0-9]+.deb
-      - libparquet-glib1100-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
-      - libparquet-glib1100_{no_rc_version}-1_[a-z0-9]+.deb
-      - libparquet1100-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
-      - libparquet1100_{no_rc_version}-1_[a-z0-9]+.deb
+      - libparquet-glib1200-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
+      - libparquet-glib1200_{no_rc_version}-1_[a-z0-9]+.deb
+      - libparquet1200-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
+      - libparquet1200_{no_rc_version}-1_[a-z0-9]+.deb
       - parquet-tools_{no_rc_version}-1_[a-z0-9]+.deb
     {% if architecture == "amd64" %}
       - gir1.2-arrow-cuda-1.0_{no_rc_version}-1_[a-z0-9]+.deb
       - gir1.2-plasma-1.0_{no_rc_version}-1_[a-z0-9]+.deb
       - libarrow-cuda-dev_{no_rc_version}-1_[a-z0-9]+.deb
       - libarrow-cuda-glib-dev_{no_rc_version}-1_[a-z0-9]+.deb
-      - libarrow-cuda-glib1100-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
-      - libarrow-cuda-glib1100_{no_rc_version}-1_[a-z0-9]+.deb
-      - libarrow-cuda1100-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
-      - libarrow-cuda1100_{no_rc_version}-1_[a-z0-9]+.deb
+      - libarrow-cuda-glib1200-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
+      - libarrow-cuda-glib1200_{no_rc_version}-1_[a-z0-9]+.deb
+      - libarrow-cuda1200-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
+      - libarrow-cuda1200_{no_rc_version}-1_[a-z0-9]+.deb
       - libplasma-dev_{no_rc_version}-1_[a-z0-9]+.deb
       - libplasma-glib-dev_{no_rc_version}-1_[a-z0-9]+.deb
       - libplasma-glib-doc_{no_rc_version}-1_[a-z0-9]+.deb
-      - libplasma-glib1100-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
-      - libplasma-glib1100_{no_rc_version}-1_[a-z0-9]+.deb
-      - libplasma1100-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
-      - libplasma1100_{no_rc_version}-1_[a-z0-9]+.deb
+      - libplasma-glib1200-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
+      - libplasma-glib1200_{no_rc_version}-1_[a-z0-9]+.deb
+      - libplasma1200-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
+      - libplasma1200_{no_rc_version}-1_[a-z0-9]+.deb
       - plasma-store-server-dbgsym_{no_rc_version}-1_[a-z0-9]+.d?deb
       - plasma-store-server_{no_rc_version}-1_[a-z0-9]+.deb
     {% endif %}
@@ -976,6 +976,8 @@ tasks:
       - Apache.Arrow.Flight.AspNetCore.{no_rc_version}.snupkg
       - Apache.Arrow.Flight.{no_rc_version}.nupkg
       - Apache.Arrow.Flight.{no_rc_version}.snupkg
+      - Apache.Arrow.Compression.{no_rc_version}.nupkg
+      - Apache.Arrow.Compression.{no_rc_version}.snupkg
       - Apache.Arrow.{no_rc_version}.nupkg
       - Apache.Arrow.{no_rc_version}.snupkg
 
@@ -1274,6 +1276,14 @@ tasks:
         # limit to execute hypothesis tests only
         PYTEST_ARGS: "-m hypothesis"
       image: conda-python-pandas
+
+  test-conda-python-3.9-substrait:
+    ci: github
+    template: docker-tests/github.linux.yml
+    params:
+      env:
+        PYTHON: "3.9"
+      image: conda-python-substrait
 
   test-debian-11-python-3:
     ci: azure
@@ -1579,9 +1589,9 @@ tasks:
       image: conda-python-hdfs
 {% endfor %}
 
-{% for python_version, spark_version, test_pyarrow_only in [("3.7", "v3.1.2", "false"),
-                                                            ("3.8", "v3.2.0", "false"),
-                                                            ("3.9", "master", "false")] %}
+{% for python_version, spark_version, test_pyarrow_only, numpy_version in [("3.7", "v3.1.2", "false", "latest"),
+                                                                           ("3.8", "v3.2.0", "false", "1.23"),
+                                                                           ("3.9", "master", "false", "latest")] %}
   test-conda-python-{{ python_version }}-spark-{{ spark_version }}:
     ci: github
     template: docker-tests/github.linux.yml
@@ -1590,6 +1600,7 @@ tasks:
         PYTHON: "{{ python_version }}"
         SPARK: "{{ spark_version }}"
         TEST_PYARROW_ONLY: "{{ test_pyarrow_only }}"
+        NUMPY: "{{ numpy_version }}"
       # use the branch-3.0 of spark, so prevent reusing any layers
       flags: --no-leaf-cache
       image: conda-python-spark

@@ -37,6 +37,7 @@
 package example
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
@@ -44,13 +45,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/apache/arrow/go/v11/arrow"
-	"github.com/apache/arrow/go/v11/arrow/array"
-	"github.com/apache/arrow/go/v11/arrow/flight"
-	"github.com/apache/arrow/go/v11/arrow/flight/flightsql"
-	"github.com/apache/arrow/go/v11/arrow/flight/flightsql/schema_ref"
-	"github.com/apache/arrow/go/v11/arrow/memory"
-	"github.com/apache/arrow/go/v11/arrow/scalar"
+	"github.com/apache/arrow/go/v12/arrow"
+	"github.com/apache/arrow/go/v12/arrow/array"
+	"github.com/apache/arrow/go/v12/arrow/flight"
+	"github.com/apache/arrow/go/v12/arrow/flight/flightsql"
+	"github.com/apache/arrow/go/v12/arrow/flight/flightsql/schema_ref"
+	"github.com/apache/arrow/go/v12/arrow/memory"
+	"github.com/apache/arrow/go/v12/arrow/scalar"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	_ "modernc.org/sqlite"
@@ -70,7 +71,7 @@ func genRandomString() []byte {
 
 func prepareQueryForGetTables(cmd flightsql.GetTables) string {
 	var b strings.Builder
-	b.WriteString(`SELECT null AS catalog_name, null AS schema_name, 
+	b.WriteString(`SELECT 'main' AS catalog_name, '' AS schema_name,
 		name AS table_name, type AS table_type FROM sqlite_master WHERE 1=1`)
 
 	if cmd.GetCatalog() != nil {
@@ -108,7 +109,7 @@ func prepareQueryForGetTables(cmd flightsql.GetTables) string {
 
 func prepareQueryForGetKeys(filter string) string {
 	return `SELECT * FROM (
-		SELECT 
+		SELECT
 			NULL AS pk_catalog_name,
 			NULL AS pk_schema_name,
 			p."table" AS pk_table_name,
@@ -140,20 +141,8 @@ func prepareQueryForGetKeys(filter string) string {
 		` ORDER BY pk_catalog_name, pk_schema_name, pk_table_name, pk_key_name, key_sequence`
 }
 
-type Statement struct {
-	stmt   *sql.Stmt
-	params [][]interface{}
-}
-
-type SQLiteFlightSQLServer struct {
-	flightsql.BaseServer
-	db *sql.DB
-
-	prepared sync.Map
-}
-
-func NewSQLiteFlightSQLServer() (*SQLiteFlightSQLServer, error) {
-	db, err := sql.Open("sqlite", ":memory:")
+func CreateDB() (*sql.DB, error) {
+	db, err := sql.Open("sqlite", "file::memory:?cache=shared")
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +151,7 @@ func NewSQLiteFlightSQLServer() (*SQLiteFlightSQLServer, error) {
 	CREATE TABLE foreignTable (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		foreignName varchar(100),
-		value int);	
+		value int);
 
 	CREATE TABLE intTable (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -178,10 +167,45 @@ func NewSQLiteFlightSQLServer() (*SQLiteFlightSQLServer, error) {
 	INSERT INTO intTable (keyName, value, foreignId) VALUES ('negative one', -1, 1);
 	INSERT INTO intTable (keyName, value, foreignId) VALUES (NULL, NULL, NULL);
 	`)
-
 	if err != nil {
+		db.Close()
 		return nil, err
 	}
+
+	return db, nil
+}
+
+func encodeTransactionQuery(query string, transactionID flightsql.Transaction) ([]byte, error) {
+	return flightsql.CreateStatementQueryTicket(
+		bytes.Join([][]byte{transactionID, []byte(query)}, []byte(":")))
+}
+
+func decodeTransactionQuery(ticket []byte) (txnID, query string, err error) {
+	id, queryBytes, found := bytes.Cut(ticket, []byte(":"))
+	if !found {
+		err = fmt.Errorf("%w: malformed ticket", arrow.ErrInvalid)
+		return
+	}
+
+	txnID = string(id)
+	query = string(queryBytes)
+	return
+}
+
+type Statement struct {
+	stmt   *sql.Stmt
+	params [][]interface{}
+}
+
+type SQLiteFlightSQLServer struct {
+	flightsql.BaseServer
+	db *sql.DB
+
+	prepared         sync.Map
+	openTransactions sync.Map
+}
+
+func NewSQLiteFlightSQLServer(db *sql.DB) (*SQLiteFlightSQLServer, error) {
 	ret := &SQLiteFlightSQLServer{db: db}
 	ret.Alloc = memory.DefaultAllocator
 	for k, v := range SqlInfoResultMap() {
@@ -201,8 +225,8 @@ func (s *SQLiteFlightSQLServer) flightInfoForCommand(desc *flight.FlightDescript
 }
 
 func (s *SQLiteFlightSQLServer) GetFlightInfoStatement(ctx context.Context, cmd flightsql.StatementQuery, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
-	query := cmd.GetQuery()
-	tkt, err := flightsql.CreateStatementQueryTicket([]byte(query))
+	query, txnid := cmd.GetQuery(), cmd.GetTransactionId()
+	tkt, err := encodeTransactionQuery(query, txnid)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +240,21 @@ func (s *SQLiteFlightSQLServer) GetFlightInfoStatement(ctx context.Context, cmd 
 }
 
 func (s *SQLiteFlightSQLServer) DoGetStatement(ctx context.Context, cmd flightsql.StatementQueryTicket) (*arrow.Schema, <-chan flight.StreamChunk, error) {
-	return doGetQuery(ctx, s.Alloc, s.db, string(cmd.GetStatementHandle()), nil)
+	txnid, query, err := decodeTransactionQuery(cmd.GetStatementHandle())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var db dbQueryCtx = s.db
+	if txnid != "" {
+		tx, loaded := s.openTransactions.Load(txnid)
+		if !loaded {
+			return nil, nil, fmt.Errorf("%w: invalid transaction id specified", arrow.ErrInvalid)
+		}
+		db = tx.(*sql.Tx)
+	}
+
+	return doGetQuery(ctx, s.Alloc, db, query, nil)
 }
 
 func (s *SQLiteFlightSQLServer) GetFlightInfoCatalogs(_ context.Context, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
@@ -224,10 +262,25 @@ func (s *SQLiteFlightSQLServer) GetFlightInfoCatalogs(_ context.Context, desc *f
 }
 
 func (s *SQLiteFlightSQLServer) DoGetCatalogs(context.Context) (*arrow.Schema, <-chan flight.StreamChunk, error) {
-	// sqlite doesn't support catalogs, this returns an empty record batch
+	// https://www.sqlite.org/cli.html
+	// > The ".databases" command shows a list of all databases open
+	// > in the current connection. There will always be at least
+	// > 2. The first one is "main", the original database opened. The
+	// > second is "temp", the database used for temporary tables.
+	// For our purposes, return only "main" and ignore other databases.
+
 	schema := schema_ref.Catalogs
 
-	ch := make(chan flight.StreamChunk)
+	catalogs, _, err := array.FromJSON(s.Alloc, arrow.BinaryTypes.String, strings.NewReader(`["main"]`))
+	if err != nil {
+		return nil, nil, err
+	}
+	defer catalogs.Release()
+
+	batch := array.NewRecord(schema, []arrow.Array{catalogs}, 1)
+
+	ch := make(chan flight.StreamChunk, 1)
+	ch <- flight.StreamChunk{Data: batch}
 	close(ch)
 
 	return schema, ch, nil
@@ -237,11 +290,29 @@ func (s *SQLiteFlightSQLServer) GetFlightInfoSchemas(_ context.Context, cmd flig
 	return s.flightInfoForCommand(desc, schema_ref.DBSchemas), nil
 }
 
-func (s *SQLiteFlightSQLServer) DoGetDBSchemas(context.Context, flightsql.GetDBSchemas) (*arrow.Schema, <-chan flight.StreamChunk, error) {
-	// sqlite doesn't support schemas, this returns an empty record batch
+func (s *SQLiteFlightSQLServer) DoGetDBSchemas(_ context.Context, cmd flightsql.GetDBSchemas) (*arrow.Schema, <-chan flight.StreamChunk, error) {
+	// SQLite doesn't support schemas, so pretend we have a single unnamed schema.
 	schema := schema_ref.DBSchemas
 
-	ch := make(chan flight.StreamChunk)
+	ch := make(chan flight.StreamChunk, 1)
+
+	if cmd.GetDBSchemaFilterPattern() == nil || *cmd.GetDBSchemaFilterPattern() == "" {
+		catalogs, _, err := array.FromJSON(s.Alloc, arrow.BinaryTypes.String, strings.NewReader(`["main"]`))
+		if err != nil {
+			return nil, nil, err
+		}
+		defer catalogs.Release()
+
+		dbSchemas, _, err := array.FromJSON(s.Alloc, arrow.BinaryTypes.String, strings.NewReader(`[""]`))
+		if err != nil {
+			return nil, nil, err
+		}
+		defer dbSchemas.Release()
+
+		batch := array.NewRecord(schema, []arrow.Array{catalogs, dbSchemas}, 1)
+		ch <- flight.StreamChunk{Data: batch}
+	}
+
 	close(ch)
 
 	return schema, ch, nil
@@ -311,7 +382,22 @@ func (s *SQLiteFlightSQLServer) DoGetTableTypes(ctx context.Context) (*arrow.Sch
 }
 
 func (s *SQLiteFlightSQLServer) DoPutCommandStatementUpdate(ctx context.Context, cmd flightsql.StatementUpdate) (int64, error) {
-	res, err := s.db.ExecContext(ctx, cmd.GetQuery())
+	var (
+		res sql.Result
+		err error
+	)
+
+	if len(cmd.GetTransactionId()) > 0 {
+		tx, loaded := s.openTransactions.Load(string(cmd.GetTransactionId()))
+		if !loaded {
+			return -1, status.Error(codes.InvalidArgument, "invalid transaction handle provided")
+		}
+
+		res, err = tx.(*sql.Tx).ExecContext(ctx, cmd.GetQuery())
+	} else {
+		res, err = s.db.ExecContext(ctx, cmd.GetQuery())
+	}
+
 	if err != nil {
 		return 0, err
 	}
@@ -319,7 +405,18 @@ func (s *SQLiteFlightSQLServer) DoPutCommandStatementUpdate(ctx context.Context,
 }
 
 func (s *SQLiteFlightSQLServer) CreatePreparedStatement(ctx context.Context, req flightsql.ActionCreatePreparedStatementRequest) (result flightsql.ActionCreatePreparedStatementResult, err error) {
-	stmt, err := s.db.PrepareContext(ctx, req.GetQuery())
+	var stmt *sql.Stmt
+
+	if len(req.GetTransactionId()) > 0 {
+		tx, loaded := s.openTransactions.Load(string(req.GetTransactionId()))
+		if !loaded {
+			return result, status.Error(codes.InvalidArgument, "invalid transaction handle provided")
+		}
+		stmt, err = tx.(*sql.Tx).PrepareContext(ctx, req.GetQuery())
+	} else {
+		stmt, err = s.db.PrepareContext(ctx, req.GetQuery())
+	}
+
 	if err != nil {
 		return result, err
 	}
@@ -356,7 +453,11 @@ func (s *SQLiteFlightSQLServer) GetFlightInfoPreparedStatement(_ context.Context
 	}, nil
 }
 
-func doGetQuery(ctx context.Context, mem memory.Allocator, db *sql.DB, query string, schema *arrow.Schema, args ...interface{}) (*arrow.Schema, <-chan flight.StreamChunk, error) {
+type dbQueryCtx interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}
+
+func doGetQuery(ctx context.Context, mem memory.Allocator, db dbQueryCtx, query string, schema *arrow.Schema, args ...interface{}) (*arrow.Schema, <-chan flight.StreamChunk, error) {
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, nil, err
@@ -648,4 +749,39 @@ func (s *SQLiteFlightSQLServer) DoGetCrossReference(ctx context.Context, cmd fli
 	}
 	query := prepareQueryForGetKeys(filter)
 	return doGetQuery(ctx, s.Alloc, s.db, query, schema_ref.ExportedKeys)
+}
+
+func (s *SQLiteFlightSQLServer) BeginTransaction(_ context.Context, req flightsql.ActionBeginTransactionRequest) (id []byte, err error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to begin transaction: %s", err.Error())
+	}
+
+	handle := genRandomString()
+	s.openTransactions.Store(string(handle), tx)
+	return handle, nil
+}
+
+func (s *SQLiteFlightSQLServer) EndTransaction(_ context.Context, req flightsql.ActionEndTransactionRequest) error {
+	if req.GetAction() == flightsql.EndTransactionUnspecified {
+		return status.Error(codes.InvalidArgument, "must specify Commit or Rollback to end transaction")
+	}
+
+	handle := string(req.GetTransactionId())
+	if tx, loaded := s.openTransactions.LoadAndDelete(handle); loaded {
+		txn := tx.(*sql.Tx)
+		switch req.GetAction() {
+		case flightsql.EndTransactionCommit:
+			if err := txn.Commit(); err != nil {
+				return status.Error(codes.Internal, "failed to commit transaction: "+err.Error())
+			}
+		case flightsql.EndTransactionRollback:
+			if err := txn.Rollback(); err != nil {
+				return status.Error(codes.Internal, "failed to rollback transaction: "+err.Error())
+			}
+		}
+		return nil
+	}
+
+	return status.Error(codes.InvalidArgument, "transaction id not found")
 }

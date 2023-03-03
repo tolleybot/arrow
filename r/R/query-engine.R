@@ -34,11 +34,7 @@ ExecPlan <- R6Class("ExecPlan",
         if (isTRUE(filter)) {
           filter <- Expression$scalar(TRUE)
         }
-        # Use FieldsInExpression to find all from dataset$selected_columns
-        colnames <- unique(unlist(map(
-          dataset$selected_columns,
-          field_names_in_expression
-        )))
+        projection <- dataset$selected_columns
         dataset <- dataset$.data
         assert_is(dataset, "Dataset")
       } else {
@@ -46,10 +42,10 @@ ExecPlan <- R6Class("ExecPlan",
         # Just a dataset, not a query, so there's no predicates to push down
         # so set some defaults
         filter <- Expression$scalar(TRUE)
-        colnames <- names(dataset)
+        projection <- make_field_refs(colnames)
       }
 
-      out <- ExecNode_Scan(self, dataset, filter, colnames %||% character(0))
+      out <- ExecNode_Scan(self, dataset, filter, projection)
       # Hold onto the source data's schema so we can preserve schema metadata
       # in the resulting Scan/Write
       out$extras$source_schema <- dataset$schema
@@ -105,7 +101,11 @@ ExecPlan <- R6Class("ExecPlan",
         # plus group_by_vars (last)
         # TODO: validate that none of names(aggregations) are the same as names(group_by_vars)
         # dplyr does not error on this but the result it gives isn't great
-        node <- node$Project(summarize_projection(.data))
+        projection <- summarize_projection(.data)
+        # skip projection if no grouping and all aggregate functions are nullary
+        if (length(projection)) {
+          node <- node$Project(projection)
+        }
 
         if (grouped) {
           # We need to prefix all of the aggregation function names with "hash_"
@@ -116,9 +116,9 @@ ExecPlan <- R6Class("ExecPlan",
         }
 
         .data$aggregations <- imap(.data$aggregations, function(x, name) {
-          # Embed the name inside the aggregation objects. `target` and `name`
-          # are the same because we just Project()ed the data that way above
-          x[["name"]] <- x[["target"]] <- name
+          # Embed `name` and `targets` inside the aggregation objects
+          x[["name"]] <- name
+          x[["targets"]] <- aggregate_target_names(x$data, name)
           x
         })
 
