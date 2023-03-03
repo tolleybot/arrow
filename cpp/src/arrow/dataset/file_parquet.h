@@ -72,10 +72,6 @@ class ARROW_DS_EXPORT ParquetFileFormat : public FileFormat {
   /// Convenience constructor which copies properties from a parquet::ReaderProperties.
   /// memory_pool will be ignored.
   explicit ParquetFileFormat(const parquet::ReaderProperties& reader_properties);
-  /// \brief  A constructor which sets the DatasetEncryptionConfiguration to provide per file
-  /// encryption and decryption properties.
-  explicit ParquetFileFormat(std::shared_ptr<parquet::encryption::DatasetEncryptionConfiguration> encryption_config,
-                            std::shared_ptr<parquet::encryption::DatasetDecryptionConfiguration> decryption_config);
 
   std::string type_name() const override { return kParquetTypeName; }
 
@@ -94,6 +90,9 @@ class ARROW_DS_EXPORT ParquetFileFormat : public FileFormat {
     arrow::TimeUnit::type coerce_int96_timestamp_unit = arrow::TimeUnit::NANO;
     /// @}
   } reader_options;
+
+  /// \brief Sets the dataset encryption configuration to provide per file encryption
+  void SetDatasetEncryptionConfig(std::shared_ptr<parquet::encryption::DatasetEncryptionConfiguration> encryption_config);
 
   Result<bool> IsSupported(const FileSource& source) const override;
 
@@ -134,14 +133,17 @@ class ARROW_DS_EXPORT ParquetFileFormat : public FileFormat {
 
   std::shared_ptr<FileWriteOptions> DefaultWriteOptions() override;
 
-    // TODO: DON add documentation
-    std::shared_ptr<::parquet::FileEncryptionProperties> GetFileEncryptionProperties(
-      std::string filePath, std::shared_ptr<::arrow::fs::FileSystem> filesystem);
-  // TODO: DON add documentation
-    std::shared_ptr<::parquet::FileDecryptionProperties> GetFileDecryptionProperties(
-    std::string filePath, std::shared_ptr<::arrow::fs::FileSystem> filesystem);
+  /// \brief A getter function to retrieve the dataset encryption configuration
+  std::shared_ptr<parquet::encryption::DatasetEncryptionConfiguration> GetDatasetEncryptionConfig() const {
+    return encryption_config_;
+  }
+  /// \brief A getter function to retrieve the dataset decryption configuration
+  std::shared_ptr<parquet::encryption::DatasetDecryptionConfiguration> GetDatasetDecryptionConfig() const {
+    return decryption_config_;
+  }
 
  private: 
+
    // TODO: DON add documentation
    std::shared_ptr<parquet::encryption::DatasetEncryptionConfiguration> encryption_config_ = nullptr;
 

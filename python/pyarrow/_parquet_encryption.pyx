@@ -475,7 +475,7 @@ cdef class CryptoFactory(_Weakrefable):
         self.factory.get().RemoveCacheEntriesForAllTokens()
 
     cdef inline shared_ptr[CPyCryptoFactory] unwrap(self) nogil:
-        return self.factory # TODO: DON this might not work due to casting
+        return self.factory # TODO: DON 
 
 
 cdef class DatasetEncryptionConfiguration(_Weakrefable):
@@ -486,7 +486,7 @@ cdef class DatasetEncryptionConfiguration(_Weakrefable):
     __slots__ = ()
 
     def __cinit__(self, CryptoFactory crypto_factory, KmsConnectionConfig kms_connection_config,
-                 EncryptionConfiguration encryption_config): 
+                 EncryptionConfiguration encryption_config, function[string, FileSystem] callback): 
         """Intialize structure.
 
         Parameters
@@ -506,6 +506,7 @@ cdef class DatasetEncryptionConfiguration(_Weakrefable):
         self.c_config.get().crypto_factory = static_pointer_cast[CCryptoFactory, CPyCryptoFactory](crypto_factory.unwrap())       
         self.c_config.get().kms_connection_config = kms_connection_config.unwrap()
         self.c_config.get().encryption_config = encryption_config.unwrap()
+        self.c_config.get().file_encryption_properties_callback = callback
 
 
 cdef class DatasetDecryptionConfiguration(_Weakrefable):
@@ -516,7 +517,7 @@ cdef class DatasetDecryptionConfiguration(_Weakrefable):
     __slots__ = ()
 
     def __cinit__(self, CryptoFactory crypto_factory, KmsConnectionConfig kms_connection_config,
-                 DecryptionConfiguration decryption_config):
+                 DecryptionConfiguration decryption_config, function[string, FileSystem] callback):
         """Intialize structure.
 
         Parameters
@@ -536,3 +537,4 @@ cdef class DatasetDecryptionConfiguration(_Weakrefable):
         self.c_config.get().crypto_factory = static_pointer_cast[CCryptoFactory, CPyCryptoFactory](crypto_factory.unwrap())       
         self.c_config.get().kms_connection_config = kms_connection_config.unwrap()
         self.c_config.get().decryption_config = decryption_config.unwrap()
+        self.c_config.get().file_decryption_properties_callback = callback
