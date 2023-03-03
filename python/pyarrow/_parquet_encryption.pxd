@@ -139,9 +139,11 @@ cdef extern from "parquet/encryption/dataset_encryption_config.h" namespace "par
         shared_ptr[CCryptoFactory] crypto_factory
         shared_ptr[CKmsConnectionConfig] kms_connection_config
         shared_ptr[CEncryptionConfiguration] encryption_config
+        function[string, FileSystem] file_encryption_properties_callback
 
     cdef cppclass CDatasetDecryptionConfiguration" parquet::encryption::DatasetDecryptionConfiguration":
         CDatasetDecryptionConfiguration() except +
         shared_ptr[CCryptoFactory] crypto_factory
         shared_ptr[CKmsConnectionConfig] kms_connection_config
         shared_ptr[CDecryptionConfiguration] decryption_config
+        function[string, FileSystem] file_decryption_properties_callback
