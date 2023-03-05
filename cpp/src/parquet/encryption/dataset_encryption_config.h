@@ -16,7 +16,6 @@ struct PARQUET_EXPORT DatasetEncryptionConfiguration {
 
   std::shared_ptr<parquet::encryption::EncryptionConfiguration> encryption_config;
 
-  std::function<void(std::string filePath, std::shared_ptr<::arrow::fs::FileSystem>)> file_encryption_properties_callback = nullptr;
 };
 
 struct PARQUET_EXPORT DatasetDecryptionConfiguration {
@@ -27,7 +26,6 @@ struct PARQUET_EXPORT DatasetDecryptionConfiguration {
 
   std::shared_ptr<parquet::encryption::DecryptionConfiguration> decryption_config;
 
-  std::function<void(std::string filePath, std::shared_ptr<::arrow::fs::FileSystem>)> file_encryption_properties_callback = nullptr;
 };
 }  // namespace encryption
 }  // namespace parquet

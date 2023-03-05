@@ -91,9 +91,6 @@ class ARROW_DS_EXPORT ParquetFileFormat : public FileFormat {
     /// @}
   } reader_options;
 
-  /// \brief Sets the dataset encryption configuration to provide per file encryption
-  void SetDatasetEncryptionConfig(std::shared_ptr<parquet::encryption::DatasetEncryptionConfiguration> encryption_config);
-
   Result<bool> IsSupported(const FileSource& source) const override;
 
   /// \brief Return the schema of the file if possible.
@@ -150,10 +147,10 @@ class ARROW_DS_EXPORT ParquetFileFormat : public FileFormat {
 
  private: 
 
-   // TODO: DON add documentation
-   std::shared_ptr<parquet::encryption::DatasetEncryptionConfiguration> encryption_config_ = nullptr;
-
-   std::shared_ptr<parquet::encryption::DatasetDecryptionConfiguration> decryption_config_ = nullptr;
+   // A configuration structure that provides per file encryption properties for a dataset
+   std::shared_ptr<parquet::encryption::DatasetEncryptionConfiguration> dataset_encryption_config_ = nullptr;
+   // A configuration structure that provides per file encryption and decryption properties for a dataset
+   std::shared_ptr<parquet::encryption::DatasetDecryptionConfiguration> dataset_decryption_config_ = nullptr;
   
 };
 

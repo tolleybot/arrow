@@ -23,7 +23,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
+#include <iostream>
 #include "arrow/compute/exec.h"
 #include "arrow/dataset/dataset_internal.h"
 #include "arrow/dataset/scanner.h"
@@ -342,7 +342,9 @@ std::optional<compute::Expression> ParquetFileFragment::EvaluateStatisticsAsExpr
 }
 
 ParquetFileFormat::ParquetFileFormat()
-    : FileFormat(std::make_shared<ParquetFragmentScanOptions>()) {}
+    : FileFormat(std::make_shared<ParquetFragmentScanOptions>()) {
+      std::cout << "ParquetFileFormat::ParquetFileFormat()" << std::endl;
+    }
 
 bool ParquetFileFormat::Equals(const FileFormat& other) const {
   if (other.type_name() != type_name()) return false;
@@ -363,13 +365,6 @@ ParquetFileFormat::ParquetFileFormat(const parquet::ReaderProperties& reader_pro
   *default_scan_opts->reader_properties = reader_properties;
 }
 
-/// create implementat for SetEncryptionPropertiesCallback
-void ParquetFileFormat::SetDatasetEncryptionConfig(std::shared_ptr<parquet::encryption::DatasetEncryptionConfiguration> encryption_config)
-{
-  encryption_config_ = encryption_config;
-}
-
-
 Result<bool> ParquetFileFormat::IsSupported(const FileSource& source) const {
   auto maybe_is_supported = IsSupportedParquetFile(*this, source);
   if (!maybe_is_supported.ok()) {
@@ -377,6 +372,7 @@ Result<bool> ParquetFileFormat::IsSupported(const FileSource& source) const {
   }
   return maybe_is_supported;
 }
+
 
 Result<std::shared_ptr<Schema>> ParquetFileFormat::Inspect(
     const FileSource& source) const {
