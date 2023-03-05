@@ -47,17 +47,26 @@ from pyarrow._dataset cimport (
     WrittenFile
 )
 
-
 from pyarrow._parquet cimport (
     _create_writer_properties, _create_arrow_writer_properties,
     FileMetaData, RowGroupMetaData, ColumnChunkMetaData
 )
+
+from pyarrow._parquet_encryption cimport CDatasetEncryptionConfiguration
 
 
 cdef Expression _true = Expression._scalar(True)
 
 
 ctypedef CParquetFileWriter* _CParquetFileWriterPtr
+
+
+cdef class PyDatasetEncryptionConfiguration(_Weakrefable):
+    cdef:
+        shared_ptr[CDatasetEncryptionConfiguration] c_config
+    
+    cdef shared_ptr[CDatasetEncryptionConfiguration] unwrap(self):
+        return self.c_config
 
 
 cdef class ParquetFileFormat(FileFormat):
@@ -78,10 +87,16 @@ cdef class ParquetFileFormat(FileFormat):
         CParquetFileFormat* parquet_format
 
     def __init__(self, read_options=None,
-                 default_fragment_scan_options=None, **kwargs):
+                 default_fragment_scan_options=None,
+                 PyDatasetEncryptionConfiguration dataset_encryption_config=None,
+                 **kwargs):
         cdef:
             shared_ptr[CParquetFileFormat] wrapped
             CParquetFileFormatReaderOptions* options
+            shared_ptr[CDatasetEncryptionConfiguration] ds_encryption_config
+
+        if dataset_encryption_config:
+            ds_encryption_config =  dataset_encryption_config.unwrap()
 
         # Read/scan options
         read_options_args = {option: kwargs[option] for option in kwargs
@@ -128,8 +143,9 @@ cdef class ParquetFileFormat(FileFormat):
             raise TypeError('`default_fragment_scan_options` must be either a '
                             'dictionary or an instance of '
                             'ParquetFragmentScanOptions')
-
+ 
         wrapped = make_shared[CParquetFileFormat]()
+
         options = &(wrapped.get().reader_options)
         if read_options.dictionary_columns is not None:
             for column in read_options.dictionary_columns:

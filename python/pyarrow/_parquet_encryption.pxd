@@ -27,6 +27,8 @@ from pyarrow._parquet cimport (ParquetCipher,
                                ParquetCipher_AES_GCM_V1,
                                ParquetCipher_AES_GCM_CTR_V1)
 
+from pyarrow.lib cimport _Weakrefable
+
 
 cdef extern from "parquet/encryption/kms_client.h" \
         namespace "parquet::encryption" nogil:
@@ -132,18 +134,18 @@ cdef extern from "arrow/python/parquet_encryption.h" \
             const CKmsConnectionConfig& kms_connection_config,
             const CDecryptionConfiguration& decryption_config)
 
-
 cdef extern from "parquet/encryption/dataset_encryption_config.h" namespace "parquet::encryption" nogil:
     cdef cppclass CDatasetEncryptionConfiguration" parquet::encryption::DatasetEncryptionConfiguration":
         CDatasetEncryptionConfiguration() except +
         shared_ptr[CCryptoFactory] crypto_factory
         shared_ptr[CKmsConnectionConfig] kms_connection_config
         shared_ptr[CEncryptionConfiguration] encryption_config
-        function[string, FileSystem] file_encryption_properties_callback
 
     cdef cppclass CDatasetDecryptionConfiguration" parquet::encryption::DatasetDecryptionConfiguration":
         CDatasetDecryptionConfiguration() except +
         shared_ptr[CCryptoFactory] crypto_factory
         shared_ptr[CKmsConnectionConfig] kms_connection_config
         shared_ptr[CDecryptionConfiguration] decryption_config
-        function[string, FileSystem] file_decryption_properties_callback
+
+
+        
