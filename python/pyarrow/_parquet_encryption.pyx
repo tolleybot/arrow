@@ -470,40 +470,5 @@ cdef class CryptoFactory(_Weakrefable):
     cdef inline shared_ptr[CPyCryptoFactory] unwrap(self) nogil:
         return self.factory # TODO: DON 
 
-cdef class DatasetEncryptionConfiguration(_Weakrefable):
-    cdef:
-        shared_ptr[CDatasetEncryptionConfiguration] c_config
 
-    # Avoid mistakingly creating attributes
-    __slots__ = ()
-
-    def __cinit__(self, CryptoFactory crypto_factory, KmsConnectionConfig kms_connection_config,
-                 EncryptionConfiguration encryption_config): 
-
-        self.c_config.reset(new CDatasetEncryptionConfiguration())
-
-        self.c_config.get().crypto_factory = static_pointer_cast[CCryptoFactory, CPyCryptoFactory](crypto_factory.unwrap())       
-        self.c_config.get().kms_connection_config = kms_connection_config.unwrap()
-        self.c_config.get().encryption_config = encryption_config.unwrap()
-    
-    cdef shared_ptr[CDatasetEncryptionConfiguration] unwrap(self):
-        return self.c_config
-
-
-cdef class DatasetDecryptionConfiguration(_Weakrefable):
-    cdef:
-        shared_ptr[CDatasetDecryptionConfiguration] c_config
-
-     # Avoid mistakingly creating attributes
-    __slots__ = ()
-
-    def __cinit__(self, CryptoFactory crypto_factory, KmsConnectionConfig kms_connection_config,
-                 DecryptionConfiguration decryption_config):
-        self.c_config.reset(new CDatasetDecryptionConfiguration())
-      
-        self.c_config.get().crypto_factory = static_pointer_cast[CCryptoFactory, CPyCryptoFactory](crypto_factory.unwrap())       
-        self.c_config.get().kms_connection_config = kms_connection_config.unwrap()
-        self.c_config.get().decryption_config = decryption_config.unwrap()
-
-    cdef shared_ptr[CDatasetDecryptionConfiguration] unwrap(self):
-        return self.c_config
+include "dataset_api.pxi"

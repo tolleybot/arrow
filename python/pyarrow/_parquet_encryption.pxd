@@ -148,4 +148,7 @@ cdef extern from "parquet/encryption/dataset_encryption_config.h" namespace "par
         shared_ptr[CDecryptionConfiguration] decryption_config
 
 
-        
+cdef public shared_ptr[CCryptoFactory] pyarrow_unwrap_cryptofactory(object crypto_factory)
+cdef public shared_ptr[CKmsConnectionConfig] pyarrow_unwrap_kmsconnectionconfig(object kmsconnectionconfig)
+cdef public shared_ptr[CEncryptionConfiguration] pyarrow_unwrap_encryptionconfig(object encryptionconfig)
+cdef public shared_ptr[CDecryptionConfiguration] pyarrow_unwrap_decryptionconfig(object decryptionconfig)
