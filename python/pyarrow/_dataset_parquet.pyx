@@ -52,7 +52,7 @@ from pyarrow._parquet cimport (
     FileMetaData, RowGroupMetaData, ColumnChunkMetaData
 )
 
-from pyarrow._parquet_encryption cimport CDatasetEncryptionConfiguration
+from pyarrow._parquet_encryption cimport *
 
 
 cdef Expression _true = Expression._scalar(True)
@@ -61,18 +61,43 @@ cdef Expression _true = Expression._scalar(True)
 ctypedef CParquetFileWriter* _CParquetFileWriterPtr
 
 
-
-cdef class PyDatasetEncryptionConfiguration(_Weakrefable):
+cdef class DatasetEncryptionConfiguration(_Weakrefable):
     cdef:
         shared_ptr[CDatasetEncryptionConfiguration] c_config
+
+    # Avoid mistakingly creating attributes
+    __slots__ = ()
+
+    def __cinit__(self, object crypto_factory, object kms_connection_config,
+                 object encryption_config): 
+
+        self.c_config.reset(new CDatasetEncryptionConfiguration())
+        self.init(crypto_factory, kms_connection_config, encryption_config)
+    
+    cdef init(self, object crypto_factory, object kms_connection_config,
+                 object encryption_config):
+        self.c_config.get().crypto_factory = pyarrow_unwrap_cryptofactory(crypto_factory)
+        self.c_config.get().kms_connection_config = pyarrow_unwrap_kmsconnectionconfig(kms_connection_config)
+        self.c_config.get().encryption_config = pyarrow_unwrap_encryptionconfig(encryption_config)
     
     cdef shared_ptr[CDatasetEncryptionConfiguration] unwrap(self):
         return self.c_config
 
-cdef class PyDatasetDecryptionConfiguration(_Weakrefable):
+cdef class DatasetDecryptionConfiguration(_Weakrefable):
     cdef:
         shared_ptr[CDatasetDecryptionConfiguration] c_config
-    
+
+     # Avoid mistakingly creating attributes
+    __slots__ = ()
+
+    def __cinit__(self, object crypto_factory, object kms_connection_config,
+                 object decryption_config):
+        self.c_config.reset(new CDatasetDecryptionConfiguration())
+      
+        self.c_config.get().crypto_factory = pyarrow_unwrap_cryptofactory(crypto_factory)
+        self.c_config.get().kms_connection_config = pyarrow_unwrap_kmsconnectionconfig(kms_connection_config)
+        self.c_config.get().decryption_config = pyarrow_unwrap_decryptionconfig(decryption_config)
+
     cdef shared_ptr[CDatasetDecryptionConfiguration] unwrap(self):
         return self.c_config
 
@@ -96,8 +121,8 @@ cdef class ParquetFileFormat(FileFormat):
 
     def __init__(self, read_options=None,
                  default_fragment_scan_options=None,
-                 PyDatasetEncryptionConfiguration dataset_encryption_config=None,
-                 PyDatasetDecryptionConfiguration dataset_decryption_config=None,
+                 dataset_encryption_config=None,
+                 dataset_decryption_config=None,
                  **kwargs):
         cdef:
             shared_ptr[CParquetFileFormat] wrapped
@@ -165,10 +190,10 @@ cdef class ParquetFileFormat(FileFormat):
         self.default_fragment_scan_options = default_fragment_scan_options
 
         if dataset_encryption_config is not None:
-            ds_encryption_config = dataset_encryption_config.unwrap()
+            ds_encryption_config = (<DatasetEncryptionConfiguration>dataset_encryption_config).unwrap()
             self.parquet_format.SetDatasetEncryptionConfig(ds_encryption_config)
         if dataset_decryption_config is not None:
-            ds_decryption_config = dataset_decryption_config.unwrap()
+            ds_decryption_config = (<DatasetDecryptionConfiguration>dataset_decryption_config).unwrap()
             self.parquet_format.SetDatasetDecryptionConfig(ds_decryption_config)
 
 
