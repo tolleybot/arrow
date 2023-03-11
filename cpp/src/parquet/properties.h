@@ -209,6 +209,22 @@ class PARQUET_EXPORT WriterProperties {
           created_by_(DEFAULT_CREATED_BY),
           store_decimal_as_integer_(false),
           page_checksum_enabled_(false) {}
+    
+    Builder(const WriterProperties& properties)
+    {
+      pool_ = ::arrow::default_memory_pool();
+      dictionary_pagesize_limit_ = properties.dictionary_pagesize_limit();
+      write_batch_size_ = properties.write_batch_size();
+      max_row_group_length_ = properties.max_row_group_length();
+      pagesize_ = properties.data_pagesize();
+      version_ = properties.version();
+      data_page_version_ = properties.data_page_version();
+      created_by_ = properties.created_by();
+      store_decimal_as_integer_ = properties.store_decimal_as_integer();
+      page_checksum_enabled_ = properties.page_checksum_enabled();
+      default_column_properties_ = properties.default_column_properties();
+    }
+
     virtual ~Builder() {}
 
     /// Specify the memory pool for the writer. Default default_memory_pool.
@@ -632,6 +648,10 @@ class PARQUET_EXPORT WriterProperties {
     } else {
       return NULLPTR;
     }
+  }
+  // \brief Returns the default column properties
+  const ColumnProperties& default_column_properties() const {
+    return default_column_properties_;
   }
 
  private:

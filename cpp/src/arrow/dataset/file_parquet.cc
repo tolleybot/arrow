@@ -17,13 +17,13 @@
 
 #include "arrow/dataset/file_parquet.h"
 
+#include <iostream>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include <iostream>
 #include "arrow/compute/exec.h"
 #include "arrow/dataset/dataset_internal.h"
 #include "arrow/dataset/scanner.h"
@@ -342,9 +342,7 @@ std::optional<compute::Expression> ParquetFileFragment::EvaluateStatisticsAsExpr
 }
 
 ParquetFileFormat::ParquetFileFormat()
-    : FileFormat(std::make_shared<ParquetFragmentScanOptions>()) {
-      std::cout << "ParquetFileFormat::ParquetFileFormat()" << std::endl;
-    }
+    : FileFormat(std::make_shared<ParquetFragmentScanOptions>()) {}
 
 bool ParquetFileFormat::Equals(const FileFormat& other) const {
   if (other.type_name() != type_name()) return false;
@@ -585,7 +583,7 @@ std::shared_ptr<FileWriteOptions> ParquetFileFormat::DefaultWriteOptions() {
   options->arrow_writer_properties = parquet::default_arrow_writer_properties();
   return options;
 }
-// TODO: DON MakeWriter
+
 Result<std::shared_ptr<FileWriter>> ParquetFileFormat::MakeWriter(
     std::shared_ptr<io::OutputStream> destination, std::shared_ptr<Schema> schema,
     std::shared_ptr<FileWriteOptions> options,
@@ -597,10 +595,35 @@ Result<std::shared_ptr<FileWriter>> ParquetFileFormat::MakeWriter(
   auto parquet_options = checked_pointer_cast<ParquetFileWriteOptions>(options);
 
   std::unique_ptr<parquet::arrow::FileWriter> parquet_writer;
-  ARROW_ASSIGN_OR_RAISE(parquet_writer, parquet::arrow::FileWriter::Open(
-                                            *schema, default_memory_pool(), destination,
-                                            parquet_options->writer_properties,
-                                            parquet_options->arrow_writer_properties));
+
+  // TODO: DON
+
+  std::shared_ptr<parquet::encryption::DatasetEncryptionConfiguration>
+      dataset_encrypt_config = GetDatasetEncryptionConfig();
+
+  if (dataset_encrypt_config != nullptr) {
+    // TODO: DON handle key material
+    auto file_encryption_prop =
+        dataset_encrypt_config->crypto_factory->GetFileEncryptionProperties(
+            *dataset_encrypt_config->kms_connection_config.get(),
+            *dataset_encrypt_config->encryption_config.get());
+
+    auto writer_properties =
+        parquet::WriterProperties::Builder(*parquet_options->writer_properties.get())
+            .encryption(file_encryption_prop)
+            ->build();
+
+    ARROW_ASSIGN_OR_RAISE(
+        parquet_writer, parquet::arrow::FileWriter::Open(
+                            *schema, default_memory_pool(), destination,
+                            writer_properties, parquet_options->arrow_writer_properties));
+
+  } else {
+    ARROW_ASSIGN_OR_RAISE(parquet_writer, parquet::arrow::FileWriter::Open(
+                                              *schema, default_memory_pool(), destination,
+                                              parquet_options->writer_properties,
+                                              parquet_options->arrow_writer_properties));
+  }
 
   return std::shared_ptr<FileWriter>(
       new ParquetFileWriter(std::move(destination), std::move(parquet_writer),
