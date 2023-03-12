@@ -606,7 +606,9 @@ Result<std::shared_ptr<FileWriter>> ParquetFileFormat::MakeWriter(
     auto file_encryption_prop =
         dataset_encrypt_config->crypto_factory->GetFileEncryptionProperties(
             *dataset_encrypt_config->kms_connection_config.get(),
-            *dataset_encrypt_config->encryption_config.get());
+            *dataset_encrypt_config->encryption_config.get(),
+            destination_locator.path,
+            destination_locator.filesystem);
 
     auto writer_properties =
         parquet::WriterProperties::Builder(*parquet_options->writer_properties.get())
