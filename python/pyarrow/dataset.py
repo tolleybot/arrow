@@ -929,8 +929,6 @@ Table/RecordBatch, or iterable of RecordBatch
     """
     from pyarrow.fs import _resolve_filesystem_and_path
 
-    print('A')
-
     if isinstance(data, (list, tuple)):
         schema = schema or data[0].schema
         data = InMemoryDataset(data, schema=schema)
@@ -947,16 +945,10 @@ Table/RecordBatch, or iterable of RecordBatch
             "supported."
         )
 
-    print('B')
-   
-
     if format is None and isinstance(data, FileSystemDataset):
         format = data.format
     else:
         format = _ensure_format(format)
-
-    print('C')
-    return
 
     if file_options is None:
         file_options = format.make_write_options()
