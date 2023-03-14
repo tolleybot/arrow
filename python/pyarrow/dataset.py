@@ -287,7 +287,6 @@ def _ensure_format(obj):
     elif obj == "parquet":
         if not _parquet_available:
             raise ValueError(_parquet_msg)
-        print('1')
         return ParquetFileFormat()
     elif obj in {"ipc", "arrow"}:
         return IpcFileFormat()

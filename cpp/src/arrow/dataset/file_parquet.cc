@@ -96,8 +96,6 @@ parquet::ReaderProperties MakeReaderProperties(
             path,
             filesystem);
 
-    std::cout << path << std::endl;
-
     parquet_scan_options->reader_properties->file_decryption_properties(file_decryption_prop);
   }
   
@@ -441,7 +439,7 @@ Future<std::shared_ptr<parquet::arrow::FileReader>> ParquetFileFormat::GetReader
       GetFragmentScanOptions<ParquetFragmentScanOptions>(kParquetTypeName, options.get(),
                                                          default_fragment_scan_options));
   auto properties =
-      MakeReaderProperties(*this, parquet_scan_options.get(),source.path(), source.filesystem(),source.path(), source.filesystem(), options->pool);
+      MakeReaderProperties(*this, parquet_scan_options.get(),source.path(), source.filesystem(),options->pool);
   ARROW_ASSIGN_OR_RAISE(auto input, source.Open());
   // TODO(ARROW-12259): workaround since we have Future<(move-only type)>
   auto reader_fut = parquet::ParquetFileReader::OpenAsync(
