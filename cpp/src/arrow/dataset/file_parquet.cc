@@ -22,7 +22,6 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
 #include "arrow/compute/exec.h"
 #include "arrow/dataset/dataset_internal.h"
 #include "arrow/dataset/scanner.h"
@@ -84,9 +83,28 @@ parquet::ReaderProperties MakeReaderProperties(
   }
   
   if (parquet_scan_options->reader_properties->file_decryption_properties() != nullptr) {
-    properties.file_decryption_properties(
-        parquet_scan_options->reader_properties->file_decryption_properties()->DeepClone());
+  
+  std::shared_ptr<parquet::encryption::DatasetDecryptionConfiguration>
+      dataset_decrypt_config = format.GetDatasetDecryptionConfig();
+
+  
+  if (dataset_decrypt_config != nullptr) { 
+    auto file_decryption_prop =
+        dataset_decrypt_config->crypto_factory->GetFileDecryptionProperties(
+            *dataset_decrypt_config->kms_connection_config.get(),
+            *dataset_decrypt_config->decryption_config.get(),
+            path,
+            filesystem);
+
+    std::cout << path << std::endl;
+
+    parquet_scan_options->reader_properties->file_decryption_properties(file_decryption_prop);
   }
+  
+  properties.file_decryption_properties(
+        parquet_scan_options->reader_properties->file_decryption_properties()->DeepClone()->DeepClone());
+  }
+
 
   properties.set_thrift_string_size_limit(
       parquet_scan_options->reader_properties->thrift_string_size_limit());
@@ -390,7 +408,6 @@ Result<bool> ParquetFileFormat::IsSupported(const FileSource& source) const {
   return maybe_is_supported;
 }
 
-
 Result<std::shared_ptr<Schema>> ParquetFileFormat::Inspect(
     const FileSource& source) const {
   auto scan_options = std::make_shared<ScanOptions>();
@@ -424,7 +441,7 @@ Future<std::shared_ptr<parquet::arrow::FileReader>> ParquetFileFormat::GetReader
       GetFragmentScanOptions<ParquetFragmentScanOptions>(kParquetTypeName, options.get(),
                                                          default_fragment_scan_options));
   auto properties =
-      MakeReaderProperties(*this, parquet_scan_options.get(),source.path(), source.filesystem(), options->pool);
+      MakeReaderProperties(*this, parquet_scan_options.get(),source.path(), source.filesystem(),source.path(), source.filesystem(), options->pool);
   ARROW_ASSIGN_OR_RAISE(auto input, source.Open());
   // TODO(ARROW-12259): workaround since we have Future<(move-only type)>
   auto reader_fut = parquet::ParquetFileReader::OpenAsync(

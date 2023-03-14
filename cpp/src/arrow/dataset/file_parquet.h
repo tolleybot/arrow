@@ -32,6 +32,7 @@
 #include "arrow/dataset/visibility.h"
 #include "arrow/io/caching.h"
 #include "parquet/encryption/dataset_encryption_config.h"
+#include "parquet/encryption/dataset_encryption_config.h"
 
 namespace parquet {
 class ParquetFileReader;
