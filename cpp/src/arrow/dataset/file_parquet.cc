@@ -58,6 +58,7 @@ namespace {
 
 parquet::ReaderProperties MakeReaderProperties(
     const ParquetFileFormat& format, ParquetFragmentScanOptions* parquet_scan_options,
+    const std::string& path="", std::shared_ptr<fs::FileSystem> filesystem = nullptr,
     MemoryPool* pool = default_memory_pool()) {
   // Can't mutate pool after construction
   parquet::ReaderProperties properties(pool);
@@ -67,8 +68,27 @@ parquet::ReaderProperties MakeReaderProperties(
     properties.disable_buffered_stream();
   }
   properties.set_buffer_size(parquet_scan_options->reader_properties->buffer_size());
+
+  std::shared_ptr<parquet::encryption::DatasetDecryptionConfiguration>
+      dataset_decrypt_config = format.GetDatasetDecryptionConfig();
+
+  
+  if (dataset_decrypt_config != nullptr) { 
+    auto file_decryption_prop =
+        dataset_decrypt_config->crypto_factory->GetFileDecryptionProperties(
+            *dataset_decrypt_config->kms_connection_config.get(),
+            *dataset_decrypt_config->decryption_config.get(),
+            path,
+            filesystem);
+
+    std::cout << path << std::endl;
+
+    parquet_scan_options->reader_properties->file_decryption_properties(file_decryption_prop);
+  }
+  
   properties.file_decryption_properties(
-      parquet_scan_options->reader_properties->file_decryption_properties());
+      parquet_scan_options->reader_properties->file_decryption_properties()->DeepClone());
+
   properties.set_thrift_string_size_limit(
       parquet_scan_options->reader_properties->thrift_string_size_limit());
   properties.set_thrift_container_size_limit(
@@ -405,7 +425,7 @@ Future<std::shared_ptr<parquet::arrow::FileReader>> ParquetFileFormat::GetReader
       GetFragmentScanOptions<ParquetFragmentScanOptions>(kParquetTypeName, options.get(),
                                                          default_fragment_scan_options));
   auto properties =
-      MakeReaderProperties(*this, parquet_scan_options.get(), options->pool);
+      MakeReaderProperties(*this, parquet_scan_options.get(),source.path(), source.filesystem(), options->pool);
   ARROW_ASSIGN_OR_RAISE(auto input, source.Open());
   // TODO(ARROW-12259): workaround since we have Future<(move-only type)>
   auto reader_fut = parquet::ParquetFileReader::OpenAsync(
@@ -596,13 +616,11 @@ Result<std::shared_ptr<FileWriter>> ParquetFileFormat::MakeWriter(
 
   std::unique_ptr<parquet::arrow::FileWriter> parquet_writer;
 
-  // TODO: DON
 
   std::shared_ptr<parquet::encryption::DatasetEncryptionConfiguration>
       dataset_encrypt_config = GetDatasetEncryptionConfig();
 
   if (dataset_encrypt_config != nullptr) {
-    // TODO: DON handle key material
     auto file_encryption_prop =
         dataset_encrypt_config->crypto_factory->GetFileEncryptionProperties(
             *dataset_encrypt_config->kms_connection_config.get(),

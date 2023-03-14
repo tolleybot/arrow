@@ -212,7 +212,7 @@ class PARQUET_EXPORT WriterProperties {
     
     Builder(const WriterProperties& properties)
     {
-      pool_ = ::arrow::default_memory_pool();
+      pool_ = ::arrow::default_memory_pool(); 
       dictionary_pagesize_limit_ = properties.dictionary_pagesize_limit();
       write_batch_size_ = properties.write_batch_size();
       max_row_group_length_ = properties.max_row_group_length();
