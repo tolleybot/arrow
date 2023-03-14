@@ -16,14 +16,13 @@
 // under the License.
 
 #include "arrow/dataset/file_parquet.h"
-
-#include <iostream>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "arrow/compute/exec.h"
 #include "arrow/dataset/dataset_internal.h"
 #include "arrow/dataset/scanner.h"
@@ -81,13 +80,13 @@ parquet::ReaderProperties MakeReaderProperties(
             path,
             filesystem);
 
-    std::cout << path << std::endl;
-
     parquet_scan_options->reader_properties->file_decryption_properties(file_decryption_prop);
   }
   
-  properties.file_decryption_properties(
-      parquet_scan_options->reader_properties->file_decryption_properties()->DeepClone());
+  if (parquet_scan_options->reader_properties->file_decryption_properties() != nullptr) {
+    properties.file_decryption_properties(
+        parquet_scan_options->reader_properties->file_decryption_properties()->DeepClone());
+  }
 
   properties.set_thrift_string_size_limit(
       parquet_scan_options->reader_properties->thrift_string_size_limit());

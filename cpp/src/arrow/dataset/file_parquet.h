@@ -137,13 +137,25 @@ class ARROW_DS_EXPORT ParquetFileFormat : public FileFormat {
       fs::FileLocator destination_locator) const override;
 
   std::shared_ptr<FileWriteOptions> DefaultWriteOptions() override;
+   
+  /// \brief A getter function to retrieve the dataset encryption configuration
+  std::shared_ptr<parquet::encryption::DatasetEncryptionConfiguration> GetDatasetEncryptionConfig() const {
+    return dataset_encryption_config_;
+  }
+  /// \brief A getter function to retrieve the dataset decryption configuration
+  std::shared_ptr<parquet::encryption::DatasetDecryptionConfiguration> GetDatasetDecryptionConfig() const {
+    return dataset_decryption_config_;
+  }
+  // create an setter for DatasetEncryptionConfiguration
+  void SetDatasetEncryptionConfig(std::shared_ptr<parquet::encryption::DatasetEncryptionConfiguration> dataset_encryption_config) {
+    dataset_encryption_config_ = dataset_encryption_config;
+  }
+  // create a setter for DatasetDecryptionConfiguration
+  void SetDatasetDecryptionConfig(std::shared_ptr<parquet::encryption::DatasetDecryptionConfiguration> dataset_decryption_config) {
+    dataset_decryption_config_ = dataset_decryption_config;
+  }
 
 
-    std::shared_ptr<::parquet::FileEncryptionProperties> GetFileEncryptionProperties(
-      std::string filePath, std::shared_ptr<::arrow::fs::FileSystem> filesystem);
-
-    std::shared_ptr<::parquet::FileDecryptionProperties> GetFileDecryptionProperties(
-    std::string filePath, std::shared_ptr<::arrow::fs::FileSystem> filesystem);
 
  private: 
 
@@ -242,10 +254,6 @@ class ARROW_DS_EXPORT ParquetFragmentScanOptions : public FragmentScanOptions {
   /// ScanOptions. Additionally, dictionary columns come from
   /// ParquetFileFormat::ReaderOptions::dict_columns.
   std::shared_ptr<parquet::ArrowReaderProperties> arrow_reader_properties;
-  /// This is the high-level encryption configuration that is common to the dataset: 
-  std::shared_ptr<DatasetDecryptionConfiguration> dataset_decryption_config;  
-    /// This is the high-level encryption configuration that is common to the dataset: 
-  std::shared_ptr<DatasetEncryptionConfiguration> dataset_encryption_config;  
 };
 
 class ARROW_DS_EXPORT ParquetFileWriteOptions : public FileWriteOptions {
