@@ -100,7 +100,7 @@ parquet::ReaderProperties MakeReaderProperties(
   }
   
   properties.file_decryption_properties(
-        parquet_scan_options->reader_properties->file_decryption_properties()->DeepClone()->DeepClone());
+        parquet_scan_options->reader_properties->file_decryption_properties());
   }
 
 
