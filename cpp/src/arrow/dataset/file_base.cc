@@ -451,8 +451,6 @@ Status FileSystemDataset::Write(const FileSystemDatasetWriteOptions& write_optio
                    ->field_names;
   std::shared_ptr<Dataset> dataset = scanner->dataset();
 
-  //TODO:DON FileSystemDatasetWriteOptions contains FileFormat
-
   // The projected_schema is currently used by pyarrow to preserve the custom metadata
   // when reading from a single input file.
   const auto& custom_metadata = scanner->options()->projected_schema->metadata();
