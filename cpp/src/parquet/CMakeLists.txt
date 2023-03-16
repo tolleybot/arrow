@@ -230,7 +230,8 @@ if(PARQUET_REQUIRE_ENCRYPTION)
       encryption/key_metadata.cc
       encryption/key_toolkit.cc
       encryption/key_toolkit_internal.cc
-      encryption/local_wrap_kms_client.cc)
+      encryption/local_wrap_kms_client.cc
+      encryption/test_in_memory_kms.cc)
 else()
   set(PARQUET_SRCS ${PARQUET_SRCS} encryption/encryption_internal_nossl.cc)
 endif()

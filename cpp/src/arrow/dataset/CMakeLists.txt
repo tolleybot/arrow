@@ -162,6 +162,9 @@ endif()
 
 if(ARROW_PARQUET)
   add_arrow_dataset_test(file_parquet_test)
+if(PARQUET_REQUIRE_ENCRYPTION) 
+  add_arrow_dataset_test(dataset_encryption_test)
+endif()
 endif()
 
 if(ARROW_BUILD_BENCHMARKS)
