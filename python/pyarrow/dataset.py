@@ -77,6 +77,8 @@ _parquet_msg = (
 
 try:
     from pyarrow._dataset_parquet import (  # noqa
+        DatasetDecryptionConfiguration,
+        DatasetEncryptionConfiguration,
         ParquetDatasetFactory,
         ParquetFactoryOptions,
         ParquetFileFormat,

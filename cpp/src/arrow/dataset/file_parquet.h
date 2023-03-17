@@ -57,6 +57,9 @@ struct SchemaManifest;
 namespace arrow {
 namespace dataset {
 
+struct DatasetEncryptionConfiguration;
+struct DatasetDecryptionConfiguration;
+
 /// \addtogroup dataset-file-formats
 ///
 /// @{
@@ -136,6 +139,32 @@ class ARROW_DS_EXPORT ParquetFileFormat : public FileFormat {
       fs::FileLocator destination_locator) const override;
 
   std::shared_ptr<FileWriteOptions> DefaultWriteOptions() override;
+
+  /// \brief A getter function to retrieve the dataset encryption configuration
+  std::shared_ptr<DatasetEncryptionConfiguration> GetDatasetEncryptionConfig() const {
+    return dataset_encryption_config_;
+  }
+  /// \brief A getter function to retrieve the dataset decryption configuration
+  std::shared_ptr<DatasetDecryptionConfiguration> GetDatasetDecryptionConfig() const {
+    return dataset_decryption_config_;
+  }
+  /// \brief A setter for DatasetEncryptionConfiguration
+  void SetDatasetEncryptionConfig(
+      std::shared_ptr<DatasetEncryptionConfiguration> dataset_encryption_config) {
+    dataset_encryption_config_ = std::move(dataset_encryption_config);
+  }
+  /// \brief A setter for DatasetDecryptionConfiguration
+  void SetDatasetDecryptionConfig(
+      std::shared_ptr<DatasetDecryptionConfiguration> dataset_decryption_config) {
+    dataset_decryption_config_ = std::move(dataset_decryption_config);
+  }
+
+ private:
+  // A configuration structure that provides per file encryption properties for a dataset
+  std::shared_ptr<DatasetEncryptionConfiguration> dataset_encryption_config_ = NULLPTR;
+  // A configuration structure that provides per file encryption and decryption properties
+  // for a dataset
+  std::shared_ptr<DatasetDecryptionConfiguration> dataset_decryption_config_ = NULLPTR;
 };
 
 /// \brief A FileFragment with parquet logic.

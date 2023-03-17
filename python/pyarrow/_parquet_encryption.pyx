@@ -359,7 +359,7 @@ cdef class CryptoFactory(_Weakrefable):
     """ A factory that produces the low-level FileEncryptionProperties and
     FileDecryptionProperties objects, from the high-level parameters."""
     cdef:
-        unique_ptr[CPyCryptoFactory] factory
+        shared_ptr[CPyCryptoFactory] factory
 
     # Avoid mistakingly creating attributes
     __slots__ = ()
@@ -466,3 +466,9 @@ cdef class CryptoFactory(_Weakrefable):
 
     def remove_cache_entries_for_all_tokens(self):
         self.factory.get().RemoveCacheEntriesForAllTokens()
+
+    cdef inline shared_ptr[CPyCryptoFactory] unwrap(self) nogil:
+        return self.factory
+
+
+include "dataset_api.pxi"
