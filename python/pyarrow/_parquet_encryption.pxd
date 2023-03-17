@@ -131,3 +131,22 @@ cdef extern from "arrow/python/parquet_encryption.h" \
             SafeGetFileDecryptionProperties(
             const CKmsConnectionConfig& kms_connection_config,
             const CDecryptionConfiguration& decryption_config)
+
+cdef extern from "arrow/dataset/parquet_encryption_config.h" namespace "arrow::dataset" nogil:
+    cdef cppclass CDatasetEncryptionConfiguration "arrow::dataset::DatasetEncryptionConfiguration":
+        CDatasetEncryptionConfiguration() except +
+        void Setup(shared_ptr[CCryptoFactory] crypto_factory,
+                   shared_ptr[CKmsConnectionConfig] kms_connection_config,
+                   shared_ptr[CEncryptionConfiguration] encryption_config)
+
+    cdef cppclass CDatasetDecryptionConfiguration "arrow::dataset::DatasetDecryptionConfiguration":
+        CDatasetDecryptionConfiguration() except +
+        void Setup(shared_ptr[CCryptoFactory] crypto_factory,
+                   shared_ptr[CKmsConnectionConfig] kms_connection_config,
+                   shared_ptr[CDecryptionConfiguration] decryption_config)
+
+
+cdef public shared_ptr[CCryptoFactory] pyarrow_unwrap_cryptofactory(object crypto_factory)
+cdef public shared_ptr[CKmsConnectionConfig] pyarrow_unwrap_kmsconnectionconfig(object kmsconnectionconfig)
+cdef public shared_ptr[CEncryptionConfiguration] pyarrow_unwrap_encryptionconfig(object encryptionconfig)
+cdef public shared_ptr[CDecryptionConfiguration] pyarrow_unwrap_decryptionconfig(object decryptionconfig)
