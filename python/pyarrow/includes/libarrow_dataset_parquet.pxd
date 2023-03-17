@@ -19,7 +19,7 @@
 
 from pyarrow.includes.libarrow_dataset cimport *
 from pyarrow._parquet cimport *
-
+from pyarrow._parquet_encryption cimport *
 
 cdef extern from "arrow/dataset/api.h" namespace "arrow::dataset" nogil:
 
@@ -57,6 +57,7 @@ cdef extern from "arrow/dataset/api.h" namespace "arrow::dataset" nogil:
             CExpression partition_expression,
             shared_ptr[CSchema] physical_schema,
             vector[int] row_groups)
+        void SetDatasetEncryptionConfig(shared_ptr[CDatasetEncryptionConfiguration] dataset_encryption_config)
 
     cdef cppclass CParquetFragmentScanOptions \
             "arrow::dataset::ParquetFragmentScanOptions"(CFragmentScanOptions):

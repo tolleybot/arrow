@@ -52,12 +52,45 @@ from pyarrow._parquet cimport (
     FileMetaData,
 )
 
+from pyarrow._parquet_encryption cimport *
+
 
 cdef Expression _true = Expression._scalar(True)
 
 
 ctypedef CParquetFileWriter* _CParquetFileWriterPtr
 
+cdef class DatasetEncryptionConfiguration(_Weakrefable):
+    cdef:
+        shared_ptr[CDatasetEncryptionConfiguration] c_config
+
+    # Avoid mistakenly creating attributes
+    __slots__ = ()
+
+    def __cinit__(self, object crypto_factory, object kms_connection_config,
+                  object encryption_config=None, object decryption_config=None):
+
+        cdef shared_ptr[CEncryptionConfiguration] c_encryption_config
+        cdef shared_ptr[CDecryptionConfiguration] c_decryption_config
+
+        self.c_config.reset(new CDatasetEncryptionConfiguration())
+        if encryption_config is not None:
+            c_encryption_config = pyarrow_unwrap_encryptionconfig(encryption_config)
+        if decryption_config is not None:
+            c_decryption_config = pyarrow_unwrap_decryptionconfig(decryption_config)
+
+        if encryption_config is None and decryption_config is None:
+            raise ValueError(
+                "Both encryption_config and decryption_config cannot be None")
+
+        self.c_config.get().Setup(pyarrow_unwrap_cryptofactory(crypto_factory),
+                                  pyarrow_unwrap_kmsconnectionconfig(
+                                      kms_connection_config),
+                                  c_encryption_config,
+                                  c_decryption_config)
+
+    cdef shared_ptr[CDatasetEncryptionConfiguration] unwrap(self):
+        return self.c_config
 
 cdef class ParquetFileFormat(FileFormat):
     """
@@ -69,6 +102,10 @@ cdef class ParquetFileFormat(FileFormat):
         Read options for the file.
     default_fragment_scan_options : ParquetFragmentScanOptions
         Scan Options for the file.
+    dataset_encryption_config : Encryption / Decryption configuration 
+        Configuration or settings related to how PyArrow should encrypt Parquet 
+        files when writing to them. This may include settings like the encryption 
+        algorithm, encryption key, etc.
     **kwargs : dict
         Additional options for read option or scan option
     """
@@ -77,10 +114,13 @@ cdef class ParquetFileFormat(FileFormat):
         CParquetFileFormat* parquet_format
 
     def __init__(self, read_options=None,
-                 default_fragment_scan_options=None, **kwargs):
+                 default_fragment_scan_options=None,
+                 dataset_encryption_config=None,
+                 **kwargs):
         cdef:
             shared_ptr[CParquetFileFormat] wrapped
             CParquetFileFormatReaderOptions* options
+            shared_ptr[CDatasetEncryptionConfiguration] ds_encryption_config
 
         # Read/scan options
         read_options_args = {option: kwargs[option] for option in kwargs
@@ -129,6 +169,7 @@ cdef class ParquetFileFormat(FileFormat):
                             'ParquetFragmentScanOptions')
 
         wrapped = make_shared[CParquetFileFormat]()
+
         options = &(wrapped.get().reader_options)
         if read_options.dictionary_columns is not None:
             for column in read_options.dictionary_columns:
@@ -138,6 +179,10 @@ cdef class ParquetFileFormat(FileFormat):
 
         self.init(<shared_ptr[CFileFormat]> wrapped)
         self.default_fragment_scan_options = default_fragment_scan_options
+
+        if dataset_encryption_config is not None:
+            ds_encryption_config = (<DatasetEncryptionConfiguration>dataset_encryption_config).unwrap()
+            self.parquet_format.SetDatasetEncryptionConfig(ds_encryption_config)
 
     cdef void init(self, const shared_ptr[CFileFormat]& sp):
         FileFormat.init(self, sp)
