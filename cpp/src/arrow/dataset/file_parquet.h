@@ -57,6 +57,9 @@ struct SchemaManifest;
 namespace arrow {
 namespace dataset {
 
+struct ParquetDecryptionConfig;
+struct ParquetEncryptionConfig;
+
 /// \addtogroup dataset-file-formats
 ///
 /// @{
@@ -226,6 +229,19 @@ class ARROW_DS_EXPORT ParquetFragmentScanOptions : public FragmentScanOptions {
   /// ScanOptions. Additionally, dictionary columns come from
   /// ParquetFileFormat::ReaderOptions::dict_columns.
   std::shared_ptr<parquet::ArrowReaderProperties> arrow_reader_properties;
+  /// \brief A getter function to retrieve the parquet decryption configuration
+  std::shared_ptr<ParquetDecryptionConfig> GetParquetDecryptionConfig() const {
+    return parquet_decryption_config_;
+  }
+  /// \brief A setter for ParquetDecryptionConfig
+  void SetParquetDecryptionConfig(
+      std::shared_ptr<ParquetDecryptionConfig> parquet_decryption_config) {
+    parquet_decryption_config_ = std::move(parquet_decryption_config);
+  }
+
+ private:
+  // A configuration structure that provides per file encryption properties for a dataset
+  std::shared_ptr<ParquetDecryptionConfig> parquet_decryption_config_ = NULLPTR;
 };
 
 class ARROW_DS_EXPORT ParquetFileWriteOptions : public FileWriteOptions {
@@ -236,11 +252,25 @@ class ARROW_DS_EXPORT ParquetFileWriteOptions : public FileWriteOptions {
   /// \brief Parquet Arrow writer properties.
   std::shared_ptr<parquet::ArrowWriterProperties> arrow_writer_properties;
 
+  /// \brief A getter function to retrieve the parquet encryption configuration
+  std::shared_ptr<ParquetEncryptionConfig> GetParquetEncryptionConfig() const {
+    return parquet_encryption_config_;
+  }
+  /// \brief A setter for ParquetEncryptionConfig
+  void SetParquetEncryptionConfig(
+      std::shared_ptr<ParquetEncryptionConfig> parquet_encryption_config) {
+    parquet_encryption_config_ = std::move(parquet_encryption_config);
+  }
+
  protected:
   explicit ParquetFileWriteOptions(std::shared_ptr<FileFormat> format)
       : FileWriteOptions(std::move(format)) {}
 
   friend class ParquetFileFormat;
+
+ private:
+  // A configuration structure that provides per file encryption properties for a dataset
+  std::shared_ptr<ParquetEncryptionConfig> parquet_encryption_config_ = NULLPTR;
 };
 
 class ARROW_DS_EXPORT ParquetFileWriter : public FileWriter {
