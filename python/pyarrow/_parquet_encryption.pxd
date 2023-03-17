@@ -26,6 +26,27 @@ from pyarrow._parquet cimport (ParquetCipher,
                                FileDecryptionProperties,
                                ParquetCipher_AES_GCM_V1,
                                ParquetCipher_AES_GCM_CTR_V1)
+from pyarrow.lib cimport _Weakrefable
+
+cdef class CryptoFactory(_Weakrefable):
+    cdef shared_ptr[CPyCryptoFactory] factory
+    cdef init(self, callable_client_factory)
+    cdef inline shared_ptr[CPyCryptoFactory] unwrap(self) nogil
+
+cdef class EncryptionConfiguration(_Weakrefable):
+    cdef shared_ptr[CEncryptionConfiguration] configuration
+    cdef inline shared_ptr[CEncryptionConfiguration] unwrap(self) nogil
+
+cdef class DecryptionConfiguration(_Weakrefable):
+    cdef shared_ptr[CDecryptionConfiguration] configuration
+    cdef inline shared_ptr[CDecryptionConfiguration] unwrap(self) nogil
+
+cdef class KmsConnectionConfig(_Weakrefable):
+    cdef shared_ptr[CKmsConnectionConfig] configuration
+    cdef inline shared_ptr[CKmsConnectionConfig] unwrap(self) nogil
+
+    @staticmethod
+    cdef wrap(const CKmsConnectionConfig& config)
 
 
 cdef extern from "parquet/encryption/kms_client.h" \
@@ -131,3 +152,22 @@ cdef extern from "arrow/python/parquet_encryption.h" \
             SafeGetFileDecryptionProperties(
             const CKmsConnectionConfig& kms_connection_config,
             const CDecryptionConfiguration& decryption_config)
+
+cdef extern from "arrow/dataset/parquet_encryption_config.h" namespace "arrow::dataset" nogil:
+    cdef cppclass CParquetEncryptionConfig "arrow::dataset::ParquetEncryptionConfig":
+        CParquetEncryptionConfig() except +
+        void Setup(shared_ptr[CCryptoFactory] crypto_factory,
+                   shared_ptr[CKmsConnectionConfig] kms_connection_config,
+                   shared_ptr[CEncryptionConfiguration] encryption_config)
+
+    cdef cppclass CParquetDecryptionConfig "arrow::dataset::ParquetDecryptionConfig":
+        CParquetDecryptionConfig() except +
+        void Setup(shared_ptr[CCryptoFactory] crypto_factory,
+                   shared_ptr[CKmsConnectionConfig] kms_connection_config,
+                   shared_ptr[CDecryptionConfiguration] decryption_config)
+
+
+cdef public shared_ptr[CCryptoFactory] pyarrow_unwrap_cryptofactory(object crypto_factory)
+cdef public shared_ptr[CKmsConnectionConfig] pyarrow_unwrap_kmsconnectionconfig(object kmsconnectionconfig)
+cdef public shared_ptr[CEncryptionConfiguration] pyarrow_unwrap_encryptionconfig(object encryptionconfig)
+cdef public shared_ptr[CDecryptionConfiguration] pyarrow_unwrap_decryptionconfig(object decryptionconfig)
