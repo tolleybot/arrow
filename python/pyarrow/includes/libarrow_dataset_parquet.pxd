@@ -19,7 +19,7 @@
 
 from pyarrow.includes.libarrow_dataset cimport *
 from pyarrow._parquet cimport *
-
+from pyarrow._parquet_encryption cimport *
 
 cdef extern from "arrow/dataset/api.h" namespace "arrow::dataset" nogil:
 
@@ -31,6 +31,8 @@ cdef extern from "arrow/dataset/api.h" namespace "arrow::dataset" nogil:
             "arrow::dataset::ParquetFileWriteOptions"(CFileWriteOptions):
         shared_ptr[WriterProperties] writer_properties
         shared_ptr[ArrowWriterProperties] arrow_writer_properties
+        shared_ptr[CParquetEncryptionConfig] GetParquetEncryptionConfig()
+        void SetParquetEncryptionConfig(shared_ptr[CParquetEncryptionConfig] dataset_encryption_config)
 
     cdef cppclass CParquetFileFragment "arrow::dataset::ParquetFileFragment"(
             CFileFragment):
@@ -62,6 +64,8 @@ cdef extern from "arrow/dataset/api.h" namespace "arrow::dataset" nogil:
             "arrow::dataset::ParquetFragmentScanOptions"(CFragmentScanOptions):
         shared_ptr[CReaderProperties] reader_properties
         shared_ptr[ArrowReaderProperties] arrow_reader_properties
+        shared_ptr[CParquetDecryptionConfig] GetDatasetDecryptionConfig()
+        void SetParquetDecryptionConfig(shared_ptr[CParquetDecryptionConfig] dataset_decryption_config)
 
     cdef cppclass CParquetFactoryOptions \
             "arrow::dataset::ParquetFactoryOptions":
