@@ -16,14 +16,12 @@
 // under the License.
 
 #include "arrow/dataset/file_parquet.h"
-
 #include <memory>
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
 #include "arrow/compute/exec.h"
 #include "arrow/dataset/dataset_internal.h"
 #include "arrow/dataset/scanner.h"
@@ -58,6 +56,7 @@ namespace {
 
 parquet::ReaderProperties MakeReaderProperties(
     const ParquetFileFormat& format, ParquetFragmentScanOptions* parquet_scan_options,
+    const std::string& path = "", std::shared_ptr<fs::FileSystem> filesystem = nullptr,
     MemoryPool* pool = default_memory_pool()) {
   // Can't mutate pool after construction
   parquet::ReaderProperties properties(pool);
@@ -67,8 +66,25 @@ parquet::ReaderProperties MakeReaderProperties(
     properties.disable_buffered_stream();
   }
   properties.set_buffer_size(parquet_scan_options->reader_properties->buffer_size());
+
+#ifdef PARQUET_REQUIRE_ENCRYPTION
+  std::shared_ptr<DatasetDecryptionConfiguration> dataset_decrypt_config =
+      format.GetDatasetDecryptionConfig();
+
+  if (dataset_decrypt_config != nullptr) {
+    auto file_decryption_prop =
+        dataset_decrypt_config->crypto_factory->GetFileDecryptionProperties(
+            *dataset_decrypt_config->kms_connection_config.get(),
+            *dataset_decrypt_config->decryption_config.get(), path, filesystem);
+
+    parquet_scan_options->reader_properties->file_decryption_properties(
+        std::move(file_decryption_prop));
+  }
+#endif
+
   properties.file_decryption_properties(
       parquet_scan_options->reader_properties->file_decryption_properties());
+
   properties.set_thrift_string_size_limit(
       parquet_scan_options->reader_properties->thrift_string_size_limit());
   properties.set_thrift_container_size_limit(
@@ -431,8 +447,8 @@ Future<std::shared_ptr<parquet::arrow::FileReader>> ParquetFileFormat::GetReader
       auto parquet_scan_options,
       GetFragmentScanOptions<ParquetFragmentScanOptions>(kParquetTypeName, options.get(),
                                                          default_fragment_scan_options));
-  auto properties =
-      MakeReaderProperties(*this, parquet_scan_options.get(), options->pool);
+  auto properties = MakeReaderProperties(*this, parquet_scan_options.get(), source.path(),
+                                         source.filesystem(), options->pool);
   ARROW_ASSIGN_OR_RAISE(auto input, source.Open());
   // TODO(ARROW-12259): workaround since we have Future<(move-only type)>
   auto reader_fut = parquet::ParquetFileReader::OpenAsync(
@@ -621,11 +637,38 @@ Result<std::shared_ptr<FileWriter>> ParquetFileFormat::MakeWriter(
 
   auto parquet_options = checked_pointer_cast<ParquetFileWriteOptions>(options);
 
-  std::unique_ptr<parquet::arrow::FileWriter> parquet_writer;
-  ARROW_ASSIGN_OR_RAISE(parquet_writer, parquet::arrow::FileWriter::Open(
-                                            *schema, default_memory_pool(), destination,
-                                            parquet_options->writer_properties,
-                                            parquet_options->arrow_writer_properties));
+  std::unique_ptr<parquet::arrow::FileWriter> parquet_writer = NULLPTR;
+
+#ifdef PARQUET_REQUIRE_ENCRYPTION
+  std::shared_ptr<DatasetEncryptionConfiguration> dataset_encrypt_config =
+      GetDatasetEncryptionConfig();
+
+  if (dataset_encrypt_config != nullptr) {
+    auto file_encryption_prop =
+        dataset_encrypt_config->crypto_factory->GetFileEncryptionProperties(
+            *dataset_encrypt_config->kms_connection_config.get(),
+            *dataset_encrypt_config->encryption_config.get(), destination_locator.path,
+            destination_locator.filesystem);
+
+    auto writer_properties =
+        parquet::WriterProperties::Builder(*parquet_options->writer_properties.get())
+            .encryption(std::move(file_encryption_prop))
+            ->build();
+
+    ARROW_ASSIGN_OR_RAISE(
+        parquet_writer, parquet::arrow::FileWriter::Open(
+                            *schema, writer_properties->memory_pool(), destination,
+                            writer_properties, parquet_options->arrow_writer_properties));
+  }
+#endif
+
+  if (parquet_writer == NULLPTR) {
+    ARROW_ASSIGN_OR_RAISE(parquet_writer,
+                          parquet::arrow::FileWriter::Open(
+                              *schema, parquet_options->writer_properties->memory_pool(),
+                              destination, parquet_options->writer_properties,
+                              parquet_options->arrow_writer_properties));
+  }
 
   return std::shared_ptr<FileWriter>(
       new ParquetFileWriter(std::move(destination), std::move(parquet_writer),

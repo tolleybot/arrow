@@ -59,3 +59,5 @@
 #cmakedefine ARROW_WITH_UCX
 
 #cmakedefine GRPCPP_PP_INCLUDE
+
+#cmakedefine PARQUET_REQUIRE_ENCRYPTION

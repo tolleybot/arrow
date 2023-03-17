@@ -85,6 +85,8 @@ try:
         ParquetFragmentScanOptions,
         ParquetReadOptions,
         RowGroupInfo,
+        DatasetDecryptionConfiguration,
+        DatasetEncryptionConfiguration
     )
     _parquet_available = True
 except ImportError:
