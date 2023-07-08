@@ -69,17 +69,11 @@ class DatasetEncryptionTest : public ::testing::Test {
     dataset_encryption_config.crypto_factory = crypto_factory;
     dataset_encryption_config.encryption_config = encryption_config;
 
-    // DatasetDecryptionConfiguration
-    DatasetDecryptionConfiguration dataset_decryption_config;
-    dataset_decryption_config.crypto_factory = crypto_factory;
-
     // create our Parquet file format object
     auto file_format = std::make_shared<ParquetFileFormat>();
 
     file_format->SetDatasetEncryptionConfig(
         std::make_shared<DatasetEncryptionConfiguration>(dataset_encryption_config));
-    file_format->SetDatasetDecryptionConfig(
-        std::make_shared<DatasetDecryptionConfiguration>(dataset_decryption_config));
 
     return file_format;
   }
@@ -151,227 +145,225 @@ class DatasetEncryptionTest : public ::testing::Test {
 
     return crypto_factory;
   }
-
-  // Write dataset to disk with encryption
-  // The aim of this test is to demonstrate the process of writing a partitioned
-  // Parquet file while applying distinct file encryption properties to each
-  // file within the test. This is based on the selected columns.
-  TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
-    auto file_format =
-        CreateFileFormat(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
-                         kFooterKeyMasterKeyId, kFooterKeyMasterKey);
-
-    // create our mock file system
-    ::arrow::fs::TimePoint mock_now = std::chrono::system_clock::now();
-    ASSERT_OK_AND_ASSIGN(auto file_system,
-                         ::arrow::fs::internal::MockFileSystem::Make(mock_now, {}));
-    // create filesystem
-    ASSERT_OK(file_system->CreateDir(""));
-
-    auto mock_fs =
-        std::dynamic_pointer_cast<::arrow::fs::internal::MockFileSystem>(file_system);
-
-    auto partition_schema = ::arrow::schema({::arrow::field("part", ::arrow::utf8())});
-    auto partitioning =
-        std::make_shared<::arrow::dataset::HivePartitioning>(partition_schema);
-
-    // ----- Write the Dataset ----
-    auto dataset_out = BuildTable();
-    ASSERT_OK_AND_ASSIGN(auto scanner_builder_out, dataset_out->NewScan());
-    ASSERT_OK_AND_ASSIGN(auto scanner_out, scanner_builder_out->Finish());
-
-    ::arrow::dataset::FileSystemDatasetWriteOptions write_options;
-    write_options.file_write_options = file_format->DefaultWriteOptions();
-    write_options.filesystem = file_system;
-    write_options.base_dir = kBaseDir;
-    write_options.partitioning = partitioning;
-    write_options.basename_template = "part{i}.parquet";
-    ASSERT_OK(::arrow::dataset::FileSystemDataset::Write(write_options, scanner_out));
-
-    std::vector<std::string> files = {"part=a/part0.parquet", "part=b/part0.parquet",
-                                      "part=c/part0.parquet", "part=d/part0.parquet",
-                                      "part=e/part0.parquet", "part=f/part0.parquet",
-                                      "part=g/part0.parquet", "part=h/part0.parquet",
-                                      "part=i/part0.parquet", "part=j/part0.parquet"};
-    ValidateFilesExist(mock_fs, files);
-
-    // ----- Read the Dataset -----
-
-    // Get FileInfo objects for all files under the base directory
-    arrow::fs::FileSelector selector;
-    selector.base_dir = kBaseDir;
-    selector.recursive = true;
-
-    // Create a FileSystemDatasetFactory
-    arrow::dataset::FileSystemFactoryOptions factory_options;
-    factory_options.partitioning = partitioning;
-    factory_options.partition_base_dir = kBaseDir;
-    ASSERT_OK_AND_ASSIGN(auto dataset_factory,
-                         arrow::dataset::FileSystemDatasetFactory::Make(
-                             mock_fs, selector, file_format, factory_options));
-    // Create a Dataset
-    ASSERT_OK_AND_ASSIGN(auto dataset_in, dataset_factory->Finish());
-
-    // Define the callback function
-    std::function<arrow::Status(arrow::dataset::TaggedRecordBatch tagged_record_batch)>
-        visitor =
-            [](arrow::dataset::TaggedRecordBatch tagged_record_batch) -> arrow::Status {
-      return arrow::Status::OK();
-    };
-
-    ASSERT_OK_AND_ASSIGN(auto scanner_builder_in, dataset_in->NewScan());
-    ASSERT_OK_AND_ASSIGN(auto scanner_in, scanner_builder_in->Finish());
-
-    // Scan the dataset and process the record batches using the callback function
-    arrow::Status status = scanner_in->Scan(visitor);
-
-    // Check if there was an error during iteration
-    ASSERT_OK(status);
-  }
-
-  // Write dataset to disk with encryption and then read in a single parquet file
-  TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
-    auto file_format =
-        CreateFileFormat(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
-                         kFooterKeyMasterKeyId, kFooterKeyMasterKey);
-
-    // create our mock file system
-    ::arrow::fs::TimePoint mock_now = std::chrono::system_clock::now();
-    ASSERT_OK_AND_ASSIGN(auto file_system,
-                         ::arrow::fs::internal::MockFileSystem::Make(mock_now, {}));
-    // create filesystem
-    ASSERT_OK(file_system->CreateDir(""));
-
-    auto mock_fs =
-        std::dynamic_pointer_cast<::arrow::fs::internal::MockFileSystem>(file_system);
-
-    auto partition_schema = ::arrow::schema({::arrow::field("part", ::arrow::utf8())});
-    auto partitioning =
-        std::make_shared<::arrow::dataset::HivePartitioning>(partition_schema);
-
-    // ----- Write the Dataset ----
-    auto dataset_out = BuildTable();
-    ASSERT_OK_AND_ASSIGN(auto scanner_builder, dataset_out->NewScan());
-    ASSERT_OK_AND_ASSIGN(auto scanner, scanner_builder->Finish());
-
-    ::arrow::dataset::FileSystemDatasetWriteOptions write_options;
-    write_options.file_write_options = file_format->DefaultWriteOptions();
-    write_options.filesystem = file_system;
-    write_options.base_dir = kBaseDir;
-    write_options.partitioning = partitioning;
-    write_options.basename_template = "part{i}.parquet";
-    ASSERT_OK(::arrow::dataset::FileSystemDataset::Write(write_options, scanner));
-
-    // ----- Read Single File -----
-
-    // Define the path to the encrypted Parquet file
-    std::string file_path = "part=a/part0.parquet";
-
-    auto dataset_decryption_config = file_format->GetDatasetDecryptionConfig();
-
-    auto crypto_factory = dataset_decryption_config->crypto_factory;
-
-    // Get the FileDecryptionProperties object using the CryptoFactory object
-    auto file_decryption_properties = crypto_factory->GetFileDecryptionProperties(
-        *dataset_decryption_config->kms_connection_config,
-        *dataset_decryption_config->decryption_config);
-
-    // Create the ReaderProperties object using the FileDecryptionProperties object
-    auto reader_properties = std::make_shared<parquet::ReaderProperties>();
-    reader_properties->file_decryption_properties(file_decryption_properties);
-
-    // Open the Parquet file using the MockFileSystem
-    std::shared_ptr<arrow::io::RandomAccessFile> input;
-    ASSERT_OK_AND_ASSIGN(input, mock_fs->OpenInputFile(file_path));
-
-    parquet::arrow::FileReaderBuilder reader_builder;
-    ASSERT_OK(reader_builder.Open(input, *reader_properties));
-
-    ASSERT_OK_AND_ASSIGN(auto arrow_reader, reader_builder.Build());
-
-    // Read entire file as a single Arrow table
-    std::shared_ptr<arrow::Table> table;
-    ASSERT_OK(arrow_reader->ReadTable(&table));
-
-    // Add assertions to check the contents of the table
-    ASSERT_EQ(table->num_rows(), 1);
-    ASSERT_EQ(table->num_columns(), 3);
-  }
-
-  // verify if Parquet metadata can be read without decryption
-  // properties when the footer is encrypted:
-  TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
-    auto file_format =
-        CreateFileFormat(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
-                         kFooterKeyMasterKeyId, kFooterKeyMasterKey);
-
-    // create our mock file system
-    ::arrow::fs::TimePoint mock_now = std::chrono::system_clock::now();
-    ASSERT_OK_AND_ASSIGN(auto file_system,
-                         ::arrow::fs::internal::MockFileSystem::Make(mock_now, {}));
-    // create filesystem
-    ASSERT_OK(file_system->CreateDir(""));
-
-    auto mock_fs =
-        std::dynamic_pointer_cast<::arrow::fs::internal::MockFileSystem>(file_system);
-
-    auto partition_schema = ::arrow::schema({::arrow::field("part", ::arrow::utf8())});
-    auto partitioning =
-        std::make_shared<::arrow::dataset::HivePartitioning>(partition_schema);
-
-    // ----- Write the Dataset ----
-    auto dataset_out = BuildTable();
-    ASSERT_OK_AND_ASSIGN(auto scanner_builder, dataset_out->NewScan());
-    ASSERT_OK_AND_ASSIGN(auto scanner, scanner_builder->Finish());
-
-    ::arrow::dataset::FileSystemDatasetWriteOptions write_options;
-    write_options.file_write_options = file_format->DefaultWriteOptions();
-    write_options.filesystem = file_system;
-    write_options.base_dir = kBaseDir;
-    write_options.partitioning = partitioning;
-    write_options.basename_template = "part{i}.parquet";
-    ASSERT_OK(::arrow::dataset::FileSystemDataset::Write(write_options, scanner));
-
-    // ----- Read Single File -----
-
-    // Define the path to the encrypted Parquet file
-    std::string file_path = "part=a/part0.parquet";
-
-    auto dataset_decryption_config = file_format->GetDatasetDecryptionConfig();
-
-    auto crypto_factory = dataset_decryption_config->crypto_factory;
-
-    // Get the FileDecryptionProperties object using the CryptoFactory object
-    auto file_decryption_properties = crypto_factory->GetFileDecryptionProperties(
-        *dataset_decryption_config->kms_connection_config,
-        *dataset_decryption_config->decryption_config);
-
-    // Create the ReaderProperties object using the FileDecryptionProperties object
-    auto reader_properties = std::make_shared<parquet::ReaderProperties>();
-    reader_properties->file_decryption_properties(file_decryption_properties);
-
-    // Open the Parquet file using the MockFileSystem
-    std::shared_ptr<arrow::io::RandomAccessFile> input;
-    ASSERT_OK_AND_ASSIGN(input, mock_fs->OpenInputFile(file_path));
-
-    parquet::arrow::FileReaderBuilder reader_builder;
-    ASSERT_OK(reader_builder.Open(input, *reader_properties));
-
-    // Try to read metadata without providing decryption properties
-    auto reader_properties_without_decryption = parquet::ReaderProperties();
-    ASSERT_THROW(parquet::ReadMetaData(input), parquet::ParquetException);
-
-    ASSERT_OK_AND_ASSIGN(auto arrow_reader, reader_builder.Build());
-
-    // Read entire file as a single Arrow table
-    std::shared_ptr<arrow::Table> table;
-    ASSERT_OK(arrow_reader->ReadTable(&table));
-
-    // Add assertions to check the contents of the table
-    ASSERT_EQ(table->num_rows(), 1);
-    ASSERT_EQ(table->num_columns(), 3);
-  }
 };
+// Write dataset to disk with encryption
+// The aim of this test is to demonstrate the process of writing a partitioned
+// Parquet file while applying distinct file encryption properties to each
+// file within the test. This is based on the selected columns.
+TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
+  auto file_format =
+      CreateFileFormat(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
+                       kFooterKeyMasterKeyId, kFooterKeyMasterKey);
 
+  // create our mock file system
+  ::arrow::fs::TimePoint mock_now = std::chrono::system_clock::now();
+  ASSERT_OK_AND_ASSIGN(auto file_system,
+                       ::arrow::fs::internal::MockFileSystem::Make(mock_now, {}));
+  // create filesystem
+  ASSERT_OK(file_system->CreateDir(""));
+
+  auto mock_fs =
+      std::dynamic_pointer_cast<::arrow::fs::internal::MockFileSystem>(file_system);
+
+  auto partition_schema = ::arrow::schema({::arrow::field("part", ::arrow::utf8())});
+  auto partitioning =
+      std::make_shared<::arrow::dataset::HivePartitioning>(partition_schema);
+
+  // ----- Write the Dataset ----
+  auto dataset_out = BuildTable();
+  ASSERT_OK_AND_ASSIGN(auto scanner_builder_out, dataset_out->NewScan());
+  ASSERT_OK_AND_ASSIGN(auto scanner_out, scanner_builder_out->Finish());
+
+  ::arrow::dataset::FileSystemDatasetWriteOptions write_options;
+  write_options.file_write_options = file_format->DefaultWriteOptions();
+  write_options.filesystem = file_system;
+  write_options.base_dir = kBaseDir;
+  write_options.partitioning = partitioning;
+  write_options.basename_template = "part{i}.parquet";
+  ASSERT_OK(::arrow::dataset::FileSystemDataset::Write(write_options, scanner_out));
+
+  std::vector<std::string> files = {"part=a/part0.parquet", "part=b/part0.parquet",
+                                    "part=c/part0.parquet", "part=d/part0.parquet",
+                                    "part=e/part0.parquet", "part=f/part0.parquet",
+                                    "part=g/part0.parquet", "part=h/part0.parquet",
+                                    "part=i/part0.parquet", "part=j/part0.parquet"};
+  ValidateFilesExist(mock_fs, files);
+
+  // ----- Read the Dataset -----
+
+  // Get FileInfo objects for all files under the base directory
+  arrow::fs::FileSelector selector;
+  selector.base_dir = kBaseDir;
+  selector.recursive = true;
+
+  // Create a FileSystemDatasetFactory
+  arrow::dataset::FileSystemFactoryOptions factory_options;
+  factory_options.partitioning = partitioning;
+  factory_options.partition_base_dir = kBaseDir;
+  ASSERT_OK_AND_ASSIGN(auto dataset_factory,
+                       arrow::dataset::FileSystemDatasetFactory::Make(
+                           mock_fs, selector, file_format, factory_options));
+  // Create a Dataset
+  ASSERT_OK_AND_ASSIGN(auto dataset_in, dataset_factory->Finish());
+
+  // Define the callback function
+  std::function<arrow::Status(arrow::dataset::TaggedRecordBatch tagged_record_batch)>
+      visitor =
+          [](arrow::dataset::TaggedRecordBatch tagged_record_batch) -> arrow::Status {
+    return arrow::Status::OK();
+  };
+
+  ASSERT_OK_AND_ASSIGN(auto scanner_builder_in, dataset_in->NewScan());
+  ASSERT_OK_AND_ASSIGN(auto scanner_in, scanner_builder_in->Finish());
+
+  // Scan the dataset and process the record batches using the callback function
+  arrow::Status status = scanner_in->Scan(visitor);
+
+  // Check if there was an error during iteration
+  ASSERT_OK(status);
+}
+
+// Write dataset to disk with encryption and then read in a single parquet file
+TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
+  auto file_format =
+      CreateFileFormat(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
+                       kFooterKeyMasterKeyId, kFooterKeyMasterKey);
+
+  // create our mock file system
+  ::arrow::fs::TimePoint mock_now = std::chrono::system_clock::now();
+  ASSERT_OK_AND_ASSIGN(auto file_system,
+                       ::arrow::fs::internal::MockFileSystem::Make(mock_now, {}));
+  // create filesystem
+  ASSERT_OK(file_system->CreateDir(""));
+
+  auto mock_fs =
+      std::dynamic_pointer_cast<::arrow::fs::internal::MockFileSystem>(file_system);
+
+  auto partition_schema = ::arrow::schema({::arrow::field("part", ::arrow::utf8())});
+  auto partitioning =
+      std::make_shared<::arrow::dataset::HivePartitioning>(partition_schema);
+
+  // ----- Write the Dataset ----
+  auto dataset_out = BuildTable();
+  ASSERT_OK_AND_ASSIGN(auto scanner_builder, dataset_out->NewScan());
+  ASSERT_OK_AND_ASSIGN(auto scanner, scanner_builder->Finish());
+
+  ::arrow::dataset::FileSystemDatasetWriteOptions write_options;
+  write_options.file_write_options = file_format->DefaultWriteOptions();
+  write_options.filesystem = file_system;
+  write_options.base_dir = kBaseDir;
+  write_options.partitioning = partitioning;
+  write_options.basename_template = "part{i}.parquet";
+  ASSERT_OK(::arrow::dataset::FileSystemDataset::Write(write_options, scanner));
+
+  // ----- Read Single File -----
+
+  // Define the path to the encrypted Parquet file
+  std::string file_path = "part=a/part0.parquet";
+
+  auto dataset_encryption_config = file_format->GetDatasetEncryptionConfig();
+
+  auto crypto_factory = dataset_encryption_config->crypto_factory;
+
+  // Get the FileDecryptionProperties object using the CryptoFactory object
+  auto file_decryption_properties = crypto_factory->GetFileDecryptionProperties(
+      *dataset_encryption_config->kms_connection_config,
+      *dataset_encryption_config->decryption_config);
+
+  // Create the ReaderProperties object using the FileDecryptionProperties object
+  auto reader_properties = std::make_shared<parquet::ReaderProperties>();
+  reader_properties->file_decryption_properties(file_decryption_properties);
+
+  // Open the Parquet file using the MockFileSystem
+  std::shared_ptr<arrow::io::RandomAccessFile> input;
+  ASSERT_OK_AND_ASSIGN(input, mock_fs->OpenInputFile(file_path));
+
+  parquet::arrow::FileReaderBuilder reader_builder;
+  ASSERT_OK(reader_builder.Open(input, *reader_properties));
+
+  ASSERT_OK_AND_ASSIGN(auto arrow_reader, reader_builder.Build());
+
+  // Read entire file as a single Arrow table
+  std::shared_ptr<arrow::Table> table;
+  ASSERT_OK(arrow_reader->ReadTable(&table));
+
+  // Add assertions to check the contents of the table
+  ASSERT_EQ(table->num_rows(), 1);
+  ASSERT_EQ(table->num_columns(), 3);
+}
+
+// verify if Parquet metadata can be read without decryption
+// properties when the footer is encrypted:
+TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
+  auto file_format =
+      CreateFileFormat(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
+                       kFooterKeyMasterKeyId, kFooterKeyMasterKey);
+
+  // create our mock file system
+  ::arrow::fs::TimePoint mock_now = std::chrono::system_clock::now();
+  ASSERT_OK_AND_ASSIGN(auto file_system,
+                       ::arrow::fs::internal::MockFileSystem::Make(mock_now, {}));
+  // create filesystem
+  ASSERT_OK(file_system->CreateDir(""));
+
+  auto mock_fs =
+      std::dynamic_pointer_cast<::arrow::fs::internal::MockFileSystem>(file_system);
+
+  auto partition_schema = ::arrow::schema({::arrow::field("part", ::arrow::utf8())});
+  auto partitioning =
+      std::make_shared<::arrow::dataset::HivePartitioning>(partition_schema);
+
+  // ----- Write the Dataset ----
+  auto dataset_out = BuildTable();
+  ASSERT_OK_AND_ASSIGN(auto scanner_builder, dataset_out->NewScan());
+  ASSERT_OK_AND_ASSIGN(auto scanner, scanner_builder->Finish());
+
+  ::arrow::dataset::FileSystemDatasetWriteOptions write_options;
+  write_options.file_write_options = file_format->DefaultWriteOptions();
+  write_options.filesystem = file_system;
+  write_options.base_dir = kBaseDir;
+  write_options.partitioning = partitioning;
+  write_options.basename_template = "part{i}.parquet";
+  ASSERT_OK(::arrow::dataset::FileSystemDataset::Write(write_options, scanner));
+
+  // ----- Read Single File -----
+
+  // Define the path to the encrypted Parquet file
+  std::string file_path = "part=a/part0.parquet";
+
+  auto dataset_encryption_config = file_format->GetDatasetEncryptionConfig();
+
+  auto crypto_factory = dataset_encryption_config->crypto_factory;
+
+  // Get the FileDecryptionProperties object using the CryptoFactory object
+  auto file_decryption_properties = crypto_factory->GetFileDecryptionProperties(
+      *dataset_encryption_config->kms_connection_config,
+      *dataset_encryption_config->decryption_config);
+
+  // Create the ReaderProperties object using the FileDecryptionProperties object
+  auto reader_properties = std::make_shared<parquet::ReaderProperties>();
+  reader_properties->file_decryption_properties(file_decryption_properties);
+
+  // Open the Parquet file using the MockFileSystem
+  std::shared_ptr<arrow::io::RandomAccessFile> input;
+  ASSERT_OK_AND_ASSIGN(input, mock_fs->OpenInputFile(file_path));
+
+  parquet::arrow::FileReaderBuilder reader_builder;
+  ASSERT_OK(reader_builder.Open(input, *reader_properties));
+
+  // Try to read metadata without providing decryption properties
+  auto reader_properties_without_decryption = parquet::ReaderProperties();
+  ASSERT_THROW(parquet::ReadMetaData(input), parquet::ParquetException);
+
+  ASSERT_OK_AND_ASSIGN(auto arrow_reader, reader_builder.Build());
+
+  // Read entire file as a single Arrow table
+  std::shared_ptr<arrow::Table> table;
+  ASSERT_OK(arrow_reader->ReadTable(&table));
+
+  // Add assertions to check the contents of the table
+  ASSERT_EQ(table->num_rows(), 1);
+  ASSERT_EQ(table->num_columns(), 3);
+}
 }  // namespace dataset
 }  // namespace arrow

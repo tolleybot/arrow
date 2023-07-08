@@ -178,6 +178,7 @@ if(ARROW_PARQUET)
   if(PARQUET_REQUIRE_ENCRYPTION AND ARROW_DATASET)
     add_arrow_dataset_test(dataset_encryption_test
                            SOURCES
+                           dataset_encryption_test.cc
                            ${PROJECT_SOURCE_DIR}/src/parquet/encryption/test_in_memory_kms.cc
     )
   endif()
