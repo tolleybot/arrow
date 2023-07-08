@@ -82,12 +82,10 @@ def test_dataset_encryption_decryption():
 
     crypto_factory = pe.CryptoFactory(kms_factory)
     de = ds.DatasetEncryptionConfiguration(
-        crypto_factory, kms_connection_config, encryption_config)
-    dde = ds.DatasetDecryptionConfiguration(
-        crypto_factory, kms_connection_config, decryption_config)
+        crypto_factory, kms_connection_config, encryption_config, decryption_config)
 
     pformat = pa.dataset.ParquetFileFormat(
-        dataset_encryption_config=de, dataset_decryption_config=dde)
+        dataset_encryption_config=de)
     mockfs = fs._MockFileSystem()
     mockfs.create_dir('/')
 

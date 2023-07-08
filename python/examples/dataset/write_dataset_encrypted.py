@@ -71,7 +71,7 @@ de = ds.DatasetEncryptionConfiguration(
     crypto_factory, kms_connection_config, encryption_config, decryption_config)
 
 pformat = pa.dataset.ParquetFileFormat(
-    dataset_encryption_config=de, dataset_decryption_config=dde)
+    dataset_encryption_config=de)
 
 if os.path.exists('sample_dataset'):
     shutil.rmtree('sample_dataset')
