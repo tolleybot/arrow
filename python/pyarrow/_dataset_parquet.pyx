@@ -72,7 +72,7 @@ cdef class DatasetEncryptionConfiguration(_Weakrefable):
 
         cdef shared_ptr[CEncryptionConfiguration] c_encryption_config
         cdef shared_ptr[CDecryptionConfiguration] c_decryption_config
-        
+
         self.c_config.reset(new CDatasetEncryptionConfiguration())
         if encryption_config is not None:
             c_encryption_config = pyarrow_unwrap_encryptionconfig(encryption_config)
@@ -80,10 +80,12 @@ cdef class DatasetEncryptionConfiguration(_Weakrefable):
             c_decryption_config = pyarrow_unwrap_decryptionconfig(decryption_config)
 
         if encryption_config is None and decryption_config is None:
-            raise ValueError("Both encryption_config and decryption_config cannot be None")
+            raise ValueError(
+                "Both encryption_config and decryption_config cannot be None")
 
         self.c_config.get().Setup(pyarrow_unwrap_cryptofactory(crypto_factory),
-                                  pyarrow_unwrap_kmsconnectionconfig(kms_connection_config),
+                                  pyarrow_unwrap_kmsconnectionconfig(
+                                      kms_connection_config),
                                   c_encryption_config,
                                   c_decryption_config)
 
@@ -181,7 +183,7 @@ cdef class ParquetFileFormat(FileFormat):
         if dataset_encryption_config is not None:
             ds_encryption_config = (<DatasetEncryptionConfiguration>dataset_encryption_config).unwrap()
             self.parquet_format.SetDatasetEncryptionConfig(ds_encryption_config)
-     
+
     cdef void init(self, const shared_ptr[CFileFormat]& sp):
         FileFormat.init(self, sp)
         self.parquet_format = <CParquetFileFormat*> sp.get()

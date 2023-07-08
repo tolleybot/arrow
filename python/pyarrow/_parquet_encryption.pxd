@@ -144,4 +144,3 @@ cdef public shared_ptr[CCryptoFactory] pyarrow_unwrap_cryptofactory(object crypt
 cdef public shared_ptr[CKmsConnectionConfig] pyarrow_unwrap_kmsconnectionconfig(object kmsconnectionconfig)
 cdef public shared_ptr[CEncryptionConfiguration] pyarrow_unwrap_encryptionconfig(object encryptionconfig)
 cdef public shared_ptr[CDecryptionConfiguration] pyarrow_unwrap_decryptionconfig(object decryptionconfig)
-
