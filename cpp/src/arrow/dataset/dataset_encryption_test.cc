@@ -46,7 +46,7 @@ namespace dataset {
 class DatasetEncryptionTest : public ::testing::Test {
  protected:
   // Create our parquetfileformat with encryption properties
-  std::shared_ptr<ParquetFileFormat> CreateFileFormat(
+  std::shared_ptr<DatasetEncryptionConfiguration> CreateDatasetEncryptionConfig(
       const std::string_view* column_ids, const std::string_view* column_keys,
       int num_columns, std::string_view footer_id, std::string_view footer_key,
       std::string_view footer_key_name = "footer_key",
@@ -69,13 +69,7 @@ class DatasetEncryptionTest : public ::testing::Test {
     dataset_encryption_config.crypto_factory = crypto_factory;
     dataset_encryption_config.encryption_config = encryption_config;
 
-    // create our Parquet file format object
-    auto file_format = std::make_shared<ParquetFileFormat>();
-
-    file_format->SetDatasetEncryptionConfig(
-        std::make_shared<DatasetEncryptionConfiguration>(dataset_encryption_config));
-
-    return file_format;
+    return std::make_shared<DatasetEncryptionConfiguration>(dataset_encryption_config);
   }
 
   // utility to build the key map
@@ -151,9 +145,23 @@ class DatasetEncryptionTest : public ::testing::Test {
 // Parquet file while applying distinct file encryption properties to each
 // file within the test. This is based on the selected columns.
 TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
-  auto file_format =
-      CreateFileFormat(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
-                       kFooterKeyMasterKeyId, kFooterKeyMasterKey);
+  auto dataset_encryption_config =
+      CreateDatasetEncryptionConfig(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
+                                    kFooterKeyMasterKeyId, kFooterKeyMasterKey);
+
+  auto parquet_scan_options = std::make_shared<ParquetFragmentScanOptions>();
+  parquet_scan_options->SetDatasetEncryptionConfig(dataset_encryption_config);
+
+  // create our Parquet file format object
+  auto file_format = std::make_shared<ParquetFileFormat>();
+  // update default scan options
+  file_format->default_fragment_scan_options = parquet_scan_options;
+
+  // set write options
+  auto file_write_options = file_format->DefaultWriteOptions();
+  std::shared_ptr<ParquetFileWriteOptions> parquet_file_write_options =
+      std::static_pointer_cast<ParquetFileWriteOptions>(file_write_options);
+  parquet_file_write_options->SetDatasetEncryptionConfig(dataset_encryption_config);
 
   // create our mock file system
   ::arrow::fs::TimePoint mock_now = std::chrono::system_clock::now();
@@ -175,7 +183,7 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
   ASSERT_OK_AND_ASSIGN(auto scanner_out, scanner_builder_out->Finish());
 
   ::arrow::dataset::FileSystemDatasetWriteOptions write_options;
-  write_options.file_write_options = file_format->DefaultWriteOptions();
+  write_options.file_write_options = parquet_file_write_options;
   write_options.filesystem = file_system;
   write_options.base_dir = kBaseDir;
   write_options.partitioning = partitioning;
@@ -225,9 +233,23 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
 
 // Write dataset to disk with encryption and then read in a single parquet file
 TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
-  auto file_format =
-      CreateFileFormat(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
-                       kFooterKeyMasterKeyId, kFooterKeyMasterKey);
+  auto dataset_encryption_config =
+      CreateDatasetEncryptionConfig(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
+                                    kFooterKeyMasterKeyId, kFooterKeyMasterKey);
+
+  auto parquet_scan_options = std::make_shared<ParquetFragmentScanOptions>();
+  parquet_scan_options->SetDatasetEncryptionConfig(dataset_encryption_config);
+
+  // create our Parquet file format object
+  auto file_format = std::make_shared<ParquetFileFormat>();
+  // update default scan options
+  file_format->default_fragment_scan_options = parquet_scan_options;
+
+  // set write options
+  auto file_write_options = file_format->DefaultWriteOptions();
+  std::shared_ptr<ParquetFileWriteOptions> parquet_file_write_options =
+      std::static_pointer_cast<ParquetFileWriteOptions>(file_write_options);
+  parquet_file_write_options->SetDatasetEncryptionConfig(dataset_encryption_config);
 
   // create our mock file system
   ::arrow::fs::TimePoint mock_now = std::chrono::system_clock::now();
@@ -249,7 +271,7 @@ TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
   ASSERT_OK_AND_ASSIGN(auto scanner, scanner_builder->Finish());
 
   ::arrow::dataset::FileSystemDatasetWriteOptions write_options;
-  write_options.file_write_options = file_format->DefaultWriteOptions();
+  write_options.file_write_options = parquet_file_write_options;
   write_options.filesystem = file_system;
   write_options.base_dir = kBaseDir;
   write_options.partitioning = partitioning;
@@ -260,8 +282,6 @@ TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
 
   // Define the path to the encrypted Parquet file
   std::string file_path = "part=a/part0.parquet";
-
-  auto dataset_encryption_config = file_format->GetDatasetEncryptionConfig();
 
   auto crypto_factory = dataset_encryption_config->crypto_factory;
 
@@ -295,9 +315,16 @@ TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
 // verify if Parquet metadata can be read without decryption
 // properties when the footer is encrypted:
 TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
-  auto file_format =
-      CreateFileFormat(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
-                       kFooterKeyMasterKeyId, kFooterKeyMasterKey);
+  auto dataset_encryption_config =
+      CreateDatasetEncryptionConfig(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
+                                    kFooterKeyMasterKeyId, kFooterKeyMasterKey);
+  // create our Parquet file format object
+  auto file_format = std::make_shared<ParquetFileFormat>();
+  // set write options
+  auto file_write_options = file_format->DefaultWriteOptions();
+  std::shared_ptr<ParquetFileWriteOptions> parquet_file_write_options =
+      std::static_pointer_cast<ParquetFileWriteOptions>(file_write_options);
+  parquet_file_write_options->SetDatasetEncryptionConfig(dataset_encryption_config);
 
   // create our mock file system
   ::arrow::fs::TimePoint mock_now = std::chrono::system_clock::now();
@@ -319,7 +346,7 @@ TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
   ASSERT_OK_AND_ASSIGN(auto scanner, scanner_builder->Finish());
 
   ::arrow::dataset::FileSystemDatasetWriteOptions write_options;
-  write_options.file_write_options = file_format->DefaultWriteOptions();
+  write_options.file_write_options = file_write_options;
   write_options.filesystem = file_system;
   write_options.base_dir = kBaseDir;
   write_options.partitioning = partitioning;
@@ -330,8 +357,6 @@ TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
 
   // Define the path to the encrypted Parquet file
   std::string file_path = "part=a/part0.parquet";
-
-  auto dataset_encryption_config = file_format->GetDatasetEncryptionConfig();
 
   auto crypto_factory = dataset_encryption_config->crypto_factory;
 
@@ -365,5 +390,6 @@ TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
   ASSERT_EQ(table->num_rows(), 1);
   ASSERT_EQ(table->num_columns(), 3);
 }
+
 }  // namespace dataset
 }  // namespace arrow

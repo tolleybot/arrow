@@ -138,20 +138,6 @@ class ARROW_DS_EXPORT ParquetFileFormat : public FileFormat {
       fs::FileLocator destination_locator) const override;
 
   std::shared_ptr<FileWriteOptions> DefaultWriteOptions() override;
-
-  /// \brief A getter function to retrieve the dataset encryption configuration
-  std::shared_ptr<DatasetEncryptionConfiguration> GetDatasetEncryptionConfig() const {
-    return dataset_encryption_config_;
-  }
-  /// \brief A setter for DatasetEncryptionConfiguration
-  void SetDatasetEncryptionConfig(
-      std::shared_ptr<DatasetEncryptionConfiguration> dataset_encryption_config) {
-    dataset_encryption_config_ = std::move(dataset_encryption_config);
-  }
-
- private:
-  // A configuration structure that provides per file encryption properties for a dataset
-  std::shared_ptr<DatasetEncryptionConfiguration> dataset_encryption_config_ = NULLPTR;
 };
 
 /// \brief A FileFragment with parquet logic.
@@ -242,6 +228,19 @@ class ARROW_DS_EXPORT ParquetFragmentScanOptions : public FragmentScanOptions {
   /// ScanOptions. Additionally, dictionary columns come from
   /// ParquetFileFormat::ReaderOptions::dict_columns.
   std::shared_ptr<parquet::ArrowReaderProperties> arrow_reader_properties;
+  /// \brief A getter function to retrieve the dataset encryption configuration
+  std::shared_ptr<DatasetEncryptionConfiguration> GetDatasetEncryptionConfig() const {
+    return dataset_encryption_config_;
+  }
+  /// \brief A setter for DatasetEncryptionConfiguration
+  void SetDatasetEncryptionConfig(
+      std::shared_ptr<DatasetEncryptionConfiguration> dataset_encryption_config) {
+    dataset_encryption_config_ = std::move(dataset_encryption_config);
+  }
+
+ private:
+  // A configuration structure that provides per file encryption properties for a dataset
+  std::shared_ptr<DatasetEncryptionConfiguration> dataset_encryption_config_ = NULLPTR;
 };
 
 class ARROW_DS_EXPORT ParquetFileWriteOptions : public FileWriteOptions {
@@ -252,11 +251,25 @@ class ARROW_DS_EXPORT ParquetFileWriteOptions : public FileWriteOptions {
   /// \brief Parquet Arrow writer properties.
   std::shared_ptr<parquet::ArrowWriterProperties> arrow_writer_properties;
 
+  /// \brief A getter function to retrieve the dataset encryption configuration
+  std::shared_ptr<DatasetEncryptionConfiguration> GetDatasetEncryptionConfig() const {
+    return dataset_encryption_config_;
+  }
+  /// \brief A setter for DatasetEncryptionConfiguration
+  void SetDatasetEncryptionConfig(
+      std::shared_ptr<DatasetEncryptionConfiguration> dataset_encryption_config) {
+    dataset_encryption_config_ = std::move(dataset_encryption_config);
+  }
+
  protected:
   explicit ParquetFileWriteOptions(std::shared_ptr<FileFormat> format)
       : FileWriteOptions(std::move(format)) {}
 
   friend class ParquetFileFormat;
+
+ private:
+  // A configuration structure that provides per file encryption properties for a dataset
+  std::shared_ptr<DatasetEncryptionConfiguration> dataset_encryption_config_ = NULLPTR;
 };
 
 class ARROW_DS_EXPORT ParquetFileWriter : public FileWriter {

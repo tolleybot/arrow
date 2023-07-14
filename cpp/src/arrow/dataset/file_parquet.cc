@@ -72,7 +72,7 @@ parquet::ReaderProperties MakeReaderProperties(
 
 #ifdef PARQUET_REQUIRE_ENCRYPTION
   std::shared_ptr<DatasetEncryptionConfiguration> dataset_encrypt_config =
-      format.GetDatasetEncryptionConfig();
+      parquet_scan_options->GetDatasetEncryptionConfig();
 
   if (dataset_encrypt_config != nullptr) {
     auto file_decryption_prop =
@@ -643,7 +643,7 @@ Result<std::shared_ptr<FileWriter>> ParquetFileFormat::MakeWriter(
   std::unique_ptr<parquet::arrow::FileWriter> parquet_writer;
 
 #ifdef PARQUET_REQUIRE_ENCRYPTION
-  auto dataset_encrypt_config = GetDatasetEncryptionConfig();
+  auto dataset_encrypt_config = parquet_options->GetDatasetEncryptionConfig();
 
   if (dataset_encrypt_config != nullptr) {
     auto file_encryption_prop =
