@@ -52,8 +52,6 @@ encryption_config = pe.EncryptionConfiguration(
     cache_lifetime=timedelta(minutes=5.0),
     data_key_length_bits=256)
 
-decryption_config = pe.DecryptionConfiguration(cache_lifetime=300)
-
 kms_connection_config = pe.KmsConnectionConfig(
     custom_kms_conf={
         FOOTER_KEY_NAME: FOOTER_KEY.decode("UTF-8"),
@@ -61,23 +59,25 @@ kms_connection_config = pe.KmsConnectionConfig(
     }
 )
 
-
 def kms_factory(kms_connection_configuration):
     return InMemoryKmsClient(kms_connection_configuration)
 
-
 crypto_factory = pe.CryptoFactory(kms_factory)
 de = ds.DatasetEncryptionConfiguration(
-    crypto_factory, kms_connection_config, encryption_config, decryption_config)
+    crypto_factory, kms_connection_config, encryption_config)
 
-pformat = pa.dataset.ParquetFileFormat(
-    dataset_encryption_config=de)
+# set encryption config for parquet fragment scan options
+pq_scan_opts = ds.ParquetFragmentScanOptions()
+pq_scan_opts.dataset_encryption_config = de
+pformat = pa.dataset.ParquetFileFormat(default_fragment_scan_options=pq_scan_opts)
 
 if os.path.exists('sample_dataset'):
     shutil.rmtree('sample_dataset')
 
+write_options = pformat.make_write_options(dataset_encryption_config=de)
+
 ds.write_dataset(data=dataset, base_dir="sample_dataset",
-                 partitioning=['year'], format=pformat)
+                 partitioning=['year'], format=pformat, write_options=write_options)
 # read the dataset back
 dataset = ds.dataset('sample_dataset', format=pformat)
 

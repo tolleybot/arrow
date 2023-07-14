@@ -88,7 +88,12 @@ cdef class DatasetEncryptionConfiguration(_Weakrefable):
                                       kms_connection_config),
                                   c_encryption_config,
                                   c_decryption_config)
-
+    @staticmethod
+    cdef wrap(shared_ptr[CDatasetEncryptionConfiguration] c_config):
+        cdef DatasetEncryptionConfiguration python_config = DatasetEncryptionConfiguration.__new__(DatasetEncryptionConfiguration)
+        python_config.c_config = c_config
+        return python_config
+        
     cdef shared_ptr[CDatasetEncryptionConfiguration] unwrap(self):
         return self.c_config
 
@@ -115,7 +120,6 @@ cdef class ParquetFileFormat(FileFormat):
 
     def __init__(self, read_options=None,
                  default_fragment_scan_options=None,
-                 dataset_encryption_config=None,
                  **kwargs):
         cdef:
             shared_ptr[CParquetFileFormat] wrapped
@@ -180,10 +184,6 @@ cdef class ParquetFileFormat(FileFormat):
         self.init(<shared_ptr[CFileFormat]> wrapped)
         self.default_fragment_scan_options = default_fragment_scan_options
 
-        if dataset_encryption_config is not None:
-            ds_encryption_config = (<DatasetEncryptionConfiguration>dataset_encryption_config).unwrap()
-            self.parquet_format.SetDatasetEncryptionConfig(ds_encryption_config)
-
     cdef void init(self, const shared_ptr[CFileFormat]& sp):
         FileFormat.init(self, sp)
         self.parquet_format = <CParquetFileFormat*> sp.get()
@@ -223,7 +223,7 @@ cdef class ParquetFileFormat(FileFormat):
         return parquet_read_options
 
     def make_write_options(self, **kwargs):
-        opts = FileFormat.make_write_options(self)
+        opts = FileFormat.make_write_options(self)       
         (<ParquetFileWriteOptions> opts).update(**kwargs)
         return opts
 
@@ -607,6 +607,8 @@ cdef class ParquetFileWriteOptions(FileWriteOptions):
             column_encoding=self._properties["column_encoding"],
             data_page_version=self._properties["data_page_version"],
         )
+        if self._properties["dataset_encryption_config"] is not None:
+            opts.SetDatasetEncryptionConfiguration(self._properties["dataset_encryption_config"])
 
     def _set_arrow_properties(self):
         cdef CParquetFileWriteOptions* opts = self.parquet_options
@@ -642,6 +644,7 @@ cdef class ParquetFileWriteOptions(FileWriteOptions):
             coerce_timestamps=None,
             allow_truncated_timestamps=False,
             use_compliant_nested_type=True,
+            dataset_encryption_config=None,
         )
         self._set_properties()
         self._set_arrow_properties()
@@ -676,6 +679,9 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
         If not None, override the maximum total size of containers allocated
         when decoding Thrift structures. The default limit should be
         sufficient for most Parquet files.
+    dataset_encryption_config : DatasetEncryptionConfiguration, default None
+        If not None, use the provided DatasetEncryptionConfiguration to decrypt the
+        Parquet file.
     """
 
     cdef:
@@ -688,7 +694,8 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
                  buffer_size=8192,
                  bint pre_buffer=False,
                  thrift_string_size_limit=None,
-                 thrift_container_size_limit=None):
+                 thrift_container_size_limit=None,
+                 dataset_encryption_config=None):
         self.init(shared_ptr[CFragmentScanOptions](
             new CParquetFragmentScanOptions()))
         self.use_buffered_stream = use_buffered_stream
@@ -698,6 +705,7 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
             self.thrift_string_size_limit = thrift_string_size_limit
         if thrift_container_size_limit is not None:
             self.thrift_container_size_limit = thrift_container_size_limit
+        self.dataset_encryption_config = dataset_encryption_config 
 
     cdef void init(self, const shared_ptr[CFragmentScanOptions]& sp):
         FragmentScanOptions.init(self, sp)
@@ -708,6 +716,18 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
 
     cdef ArrowReaderProperties* arrow_reader_properties(self):
         return self.parquet_options.arrow_reader_properties.get()
+
+    @property
+    def dataset_encryption_config(self):
+        cdef shared_ptr[CDatasetEncryptionConfiguration] c_config
+        c_config = self.parquet_options.GetDatasetEncryptionConfig()
+        return DatasetEncryptionConfiguration.wrap(c_config)
+
+    @dataset_encryption_config.setter
+    def dataset_encryption_config(self, DatasetEncryptionConfiguration config):
+        cdef shared_ptr[CDatasetEncryptionConfiguration] c_config
+        c_config = config.unwrap()
+        self.parquet_options.SetDatasetEncryptionConfig(c_config)
 
     @property
     def use_buffered_stream(self):
@@ -761,11 +781,13 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
     def equals(self, ParquetFragmentScanOptions other):
         attrs = (
             self.use_buffered_stream, self.buffer_size, self.pre_buffer,
-            self.thrift_string_size_limit, self.thrift_container_size_limit)
+            self.thrift_string_size_limit, self.thrift_container_size_limit,
+            self.dataset_encryption_config)
         other_attrs = (
             other.use_buffered_stream, other.buffer_size, other.pre_buffer,
             other.thrift_string_size_limit,
-            other.thrift_container_size_limit)
+            other.thrift_container_size_limit,
+            other.dataset_encryption_config)
         return attrs == other_attrs
 
     @classmethod
@@ -779,6 +801,7 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
             pre_buffer=self.pre_buffer,
             thrift_string_size_limit=self.thrift_string_size_limit,
             thrift_container_size_limit=self.thrift_container_size_limit,
+            dataset_encryption=self.dataset_encryption_config,
         )
         return type(self)._reconstruct, (kwargs,)
 
