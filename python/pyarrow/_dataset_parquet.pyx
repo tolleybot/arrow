@@ -607,8 +607,11 @@ cdef class ParquetFileWriteOptions(FileWriteOptions):
             column_encoding=self._properties["column_encoding"],
             data_page_version=self._properties["data_page_version"],
         )
+        cdef shared_ptr[CDatasetEncryptionConfiguration] c_config
         if self._properties["dataset_encryption_config"] is not None:
-            opts.SetDatasetEncryptionConfiguration(self._properties["dataset_encryption_config"])
+            c_config = (<DatasetEncryptionConfiguration>self._properties["dataset_encryption_config"]).unwrap()
+            opts.SetDatasetEncryptionConfig(c_config)
+
 
     def _set_arrow_properties(self):
         cdef CParquetFileWriteOptions* opts = self.parquet_options
