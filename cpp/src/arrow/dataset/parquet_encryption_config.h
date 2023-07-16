@@ -47,7 +47,9 @@ struct ARROW_DS_EXPORT DatasetEncryptionConfiguration {
     this->crypto_factory = std::move(crypto_factory);
     this->kms_connection_config = std::move(kms_connection_config);
     this->encryption_config = std::move(encryption_config);
-    this->decryption_config = std::move(decryption_config);
+    if (decryption_config != NULLPTR) {
+      this->decryption_config = std::move(decryption_config);
+    }
   }
 
   std::shared_ptr<parquet::encryption::CryptoFactory> crypto_factory;

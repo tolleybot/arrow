@@ -73,15 +73,14 @@ cdef class DatasetEncryptionConfiguration(_Weakrefable):
         cdef shared_ptr[CEncryptionConfiguration] c_encryption_config
         cdef shared_ptr[CDecryptionConfiguration] c_decryption_config
 
+        if encryption_config is None and decryption_config is None:
+            raise ValueError("Both encryption_config and decryption_config cannot be None")
+
         self.c_config.reset(new CDatasetEncryptionConfiguration())
         if encryption_config is not None:
             c_encryption_config = pyarrow_unwrap_encryptionconfig(encryption_config)
         if decryption_config is not None:
             c_decryption_config = pyarrow_unwrap_decryptionconfig(decryption_config)
-
-        if encryption_config is None and decryption_config is None:
-            raise ValueError(
-                "Both encryption_config and decryption_config cannot be None")
 
         self.c_config.get().Setup(pyarrow_unwrap_cryptofactory(crypto_factory),
                                   pyarrow_unwrap_kmsconnectionconfig(
@@ -124,7 +123,6 @@ cdef class ParquetFileFormat(FileFormat):
         cdef:
             shared_ptr[CParquetFileFormat] wrapped
             CParquetFileFormatReaderOptions* options
-            shared_ptr[CDatasetEncryptionConfiguration] ds_encryption_config
 
         # Read/scan options
         read_options_args = {option: kwargs[option] for option in kwargs
@@ -171,7 +169,7 @@ cdef class ParquetFileFormat(FileFormat):
             raise TypeError('`default_fragment_scan_options` must be either a '
                             'dictionary or an instance of '
                             'ParquetFragmentScanOptions')
-
+ 
         wrapped = make_shared[CParquetFileFormat]()
 
         options = &(wrapped.get().reader_options)
@@ -607,18 +605,14 @@ cdef class ParquetFileWriteOptions(FileWriteOptions):
             column_encoding=self._properties["column_encoding"],
             data_page_version=self._properties["data_page_version"],
         )
-        cdef shared_ptr[CDatasetEncryptionConfiguration] c_config
-        if self._properties["dataset_encryption_config"] is not None:
-            # print out instance type of self._properties["dataset_encryption_config"]
-            print("\n\n-----------------\n\n")
-            print(type(self._properties["dataset_encryption_config"]))
-            print("\n\n-----------------\n\n")
-            if self._properties["dataset_encryption_config"] is None:
-                print("dataset_encryption_config is None!")
-            print("\n\n-----------------\n\n")
-           # c_config = (<DatasetEncryptionConfiguration>self._properties["dataset_encryption_config"]).unwrap()
-           # opts.SetDatasetEncryptionConfig(c_config)
 
+        cdef shared_ptr[CDatasetEncryptionConfiguration] c_config
+        if self._properties["dataset_encryption_config"]:
+            config = self._properties["dataset_encryption_config"]
+            if not isinstance(config, DatasetEncryptionConfiguration): 
+                raise ValueError("config must be a DatasetEncryptionConfiguration")
+            c_config = (<DatasetEncryptionConfiguration>config).unwrap()
+            opts.SetDatasetEncryptionConfig(c_config)
 
     def _set_arrow_properties(self):
         cdef CParquetFileWriteOptions* opts = self.parquet_options
@@ -715,7 +709,9 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
             self.thrift_string_size_limit = thrift_string_size_limit
         if thrift_container_size_limit is not None:
             self.thrift_container_size_limit = thrift_container_size_limit
-        self.dataset_encryption_config = dataset_encryption_config 
+
+        if dataset_encryption_config:
+            self.SetDatasetEncryptionConfig(dataset_encryption_config)
 
     cdef void init(self, const shared_ptr[CFragmentScanOptions]& sp):
         FragmentScanOptions.init(self, sp)
@@ -726,22 +722,6 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
 
     cdef ArrowReaderProperties* arrow_reader_properties(self):
         return self.parquet_options.arrow_reader_properties.get()
-
-    @property
-    def dataset_encryption_config(self):
-        cdef shared_ptr[CDatasetEncryptionConfiguration] c_config
-        c_config = self.parquet_options.GetDatasetEncryptionConfig()
-        if not c_config:
-            return None
-        return DatasetEncryptionConfiguration.wrap(c_config)
-
-    @dataset_encryption_config.setter
-    def dataset_encryption_config(self, DatasetEncryptionConfiguration config):
-        cdef shared_ptr[CDatasetEncryptionConfiguration] c_config       
-        if isinstance(config, DatasetEncryptionConfiguration):   
-            c_config = config.unwrap()            
-            self.parquet_options.SetDatasetEncryptionConfig(c_config)
-            
 
     @property
     def use_buffered_stream(self):
@@ -795,14 +775,19 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
     def equals(self, ParquetFragmentScanOptions other):
         attrs = (
             self.use_buffered_stream, self.buffer_size, self.pre_buffer,
-            self.thrift_string_size_limit, self.thrift_container_size_limit,
-            self.dataset_encryption_config)
+            self.thrift_string_size_limit, self.thrift_container_size_limit)
         other_attrs = (
             other.use_buffered_stream, other.buffer_size, other.pre_buffer,
             other.thrift_string_size_limit,
-            other.thrift_container_size_limit,
-            other.dataset_encryption_config)
+            other.thrift_container_size_limit)
         return attrs == other_attrs
+
+    def SetDatasetEncryptionConfig(self, DatasetEncryptionConfiguration config):
+        cdef shared_ptr[CDatasetEncryptionConfiguration] c_config       
+        if not isinstance(config, DatasetEncryptionConfiguration):
+            raise ValueError("config must be a DatasetEncryptionConfiguration")
+        c_config = config.unwrap()            
+        self.parquet_options.SetDatasetEncryptionConfig(c_config)
 
     @classmethod
     def _reconstruct(cls, kwargs):
