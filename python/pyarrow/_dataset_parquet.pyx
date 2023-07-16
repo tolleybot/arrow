@@ -609,8 +609,15 @@ cdef class ParquetFileWriteOptions(FileWriteOptions):
         )
         cdef shared_ptr[CDatasetEncryptionConfiguration] c_config
         if self._properties["dataset_encryption_config"] is not None:
-            c_config = (<DatasetEncryptionConfiguration>self._properties["dataset_encryption_config"]).unwrap()
-            opts.SetDatasetEncryptionConfig(c_config)
+            # print out instance type of self._properties["dataset_encryption_config"]
+            print("\n\n-----------------\n\n")
+            print(type(self._properties["dataset_encryption_config"]))
+            print("\n\n-----------------\n\n")
+            if self._properties["dataset_encryption_config"] is None:
+                print("dataset_encryption_config is None!")
+            print("\n\n-----------------\n\n")
+           # c_config = (<DatasetEncryptionConfiguration>self._properties["dataset_encryption_config"]).unwrap()
+           # opts.SetDatasetEncryptionConfig(c_config)
 
 
     def _set_arrow_properties(self):
@@ -724,13 +731,17 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
     def dataset_encryption_config(self):
         cdef shared_ptr[CDatasetEncryptionConfiguration] c_config
         c_config = self.parquet_options.GetDatasetEncryptionConfig()
+        if not c_config:
+            return None
         return DatasetEncryptionConfiguration.wrap(c_config)
 
     @dataset_encryption_config.setter
     def dataset_encryption_config(self, DatasetEncryptionConfiguration config):
-        cdef shared_ptr[CDatasetEncryptionConfiguration] c_config
-        c_config = config.unwrap()
-        self.parquet_options.SetDatasetEncryptionConfig(c_config)
+        cdef shared_ptr[CDatasetEncryptionConfiguration] c_config       
+        if isinstance(config, DatasetEncryptionConfiguration):   
+            c_config = config.unwrap()            
+            self.parquet_options.SetDatasetEncryptionConfig(c_config)
+            
 
     @property
     def use_buffered_stream(self):
@@ -804,7 +815,7 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
             pre_buffer=self.pre_buffer,
             thrift_string_size_limit=self.thrift_string_size_limit,
             thrift_container_size_limit=self.thrift_container_size_limit,
-            dataset_encryption=self.dataset_encryption_config,
+           # dataset_encryption=self.dataset_encryption_config,
         )
         return type(self)._reconstruct, (kwargs,)
 
