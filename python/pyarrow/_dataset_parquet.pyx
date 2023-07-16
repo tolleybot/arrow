@@ -690,6 +690,8 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
 
     cdef:
         CParquetFragmentScanOptions* parquet_options
+        DatasetEncryptionConfiguration _dataset_encryption_config
+
 
     # Avoid mistakingly creating attributes
     __slots__ = ()
@@ -722,6 +724,15 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
 
     cdef ArrowReaderProperties* arrow_reader_properties(self):
         return self.parquet_options.arrow_reader_properties.get()
+
+    @property
+    def dataset_encryption_config(self):
+        return self._dataset_encryption_config
+        
+
+    @dataset_encryption_config.setter
+    def dataset_encryption_config(self, DatasetEncryptionConfiguration config):
+        self.SetDatasetEncryptionConfig(config)
 
     @property
     def use_buffered_stream(self):
@@ -786,6 +797,7 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
         cdef shared_ptr[CDatasetEncryptionConfiguration] c_config       
         if not isinstance(config, DatasetEncryptionConfiguration):
             raise ValueError("config must be a DatasetEncryptionConfiguration")
+        self._dataset_encryption_config = config
         c_config = config.unwrap()            
         self.parquet_options.SetDatasetEncryptionConfig(c_config)
 
