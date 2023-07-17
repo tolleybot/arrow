@@ -59,8 +59,10 @@ kms_connection_config = pe.KmsConnectionConfig(
     }
 )
 
+
 def kms_factory(kms_connection_configuration):
     return InMemoryKmsClient(kms_connection_configuration)
+
 
 crypto_factory = pe.CryptoFactory(kms_factory)
 de = ds.DatasetEncryptionConfiguration(

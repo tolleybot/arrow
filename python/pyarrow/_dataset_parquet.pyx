@@ -74,7 +74,8 @@ cdef class DatasetEncryptionConfiguration(_Weakrefable):
         cdef shared_ptr[CDecryptionConfiguration] c_decryption_config
 
         if encryption_config is None and decryption_config is None:
-            raise ValueError("Both encryption_config and decryption_config cannot be None")
+            raise ValueError(
+                "Both encryption_config and decryption_config cannot be None")
 
         self.c_config.reset(new CDatasetEncryptionConfiguration())
         if encryption_config is not None:
@@ -87,12 +88,13 @@ cdef class DatasetEncryptionConfiguration(_Weakrefable):
                                       kms_connection_config),
                                   c_encryption_config,
                                   c_decryption_config)
+
     @staticmethod
     cdef wrap(shared_ptr[CDatasetEncryptionConfiguration] c_config):
         cdef DatasetEncryptionConfiguration python_config = DatasetEncryptionConfiguration.__new__(DatasetEncryptionConfiguration)
         python_config.c_config = c_config
         return python_config
-        
+
     cdef shared_ptr[CDatasetEncryptionConfiguration] unwrap(self):
         return self.c_config
 
@@ -169,7 +171,7 @@ cdef class ParquetFileFormat(FileFormat):
             raise TypeError('`default_fragment_scan_options` must be either a '
                             'dictionary or an instance of '
                             'ParquetFragmentScanOptions')
- 
+
         wrapped = make_shared[CParquetFileFormat]()
 
         options = &(wrapped.get().reader_options)
@@ -221,7 +223,7 @@ cdef class ParquetFileFormat(FileFormat):
         return parquet_read_options
 
     def make_write_options(self, **kwargs):
-        opts = FileFormat.make_write_options(self)       
+        opts = FileFormat.make_write_options(self)
         (<ParquetFileWriteOptions> opts).update(**kwargs)
         return opts
 
@@ -609,7 +611,7 @@ cdef class ParquetFileWriteOptions(FileWriteOptions):
         cdef shared_ptr[CDatasetEncryptionConfiguration] c_config
         if self._properties["dataset_encryption_config"]:
             config = self._properties["dataset_encryption_config"]
-            if not isinstance(config, DatasetEncryptionConfiguration): 
+            if not isinstance(config, DatasetEncryptionConfiguration):
                 raise ValueError("config must be a DatasetEncryptionConfiguration")
             c_config = (<DatasetEncryptionConfiguration>config).unwrap()
             opts.SetDatasetEncryptionConfig(c_config)
@@ -692,7 +694,6 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
         CParquetFragmentScanOptions* parquet_options
         DatasetEncryptionConfiguration _dataset_encryption_config
 
-
     # Avoid mistakingly creating attributes
     __slots__ = ()
 
@@ -728,7 +729,6 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
     @property
     def dataset_encryption_config(self):
         return self._dataset_encryption_config
-        
 
     @dataset_encryption_config.setter
     def dataset_encryption_config(self, DatasetEncryptionConfiguration config):
@@ -794,11 +794,11 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
         return attrs == other_attrs
 
     def SetDatasetEncryptionConfig(self, DatasetEncryptionConfiguration config):
-        cdef shared_ptr[CDatasetEncryptionConfiguration] c_config       
+        cdef shared_ptr[CDatasetEncryptionConfiguration] c_config
         if not isinstance(config, DatasetEncryptionConfiguration):
             raise ValueError("config must be a DatasetEncryptionConfiguration")
         self._dataset_encryption_config = config
-        c_config = config.unwrap()            
+        c_config = config.unwrap()
         self.parquet_options.SetDatasetEncryptionConfig(c_config)
 
     @classmethod
@@ -812,7 +812,7 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
             pre_buffer=self.pre_buffer,
             thrift_string_size_limit=self.thrift_string_size_limit,
             thrift_container_size_limit=self.thrift_container_size_limit,
-           # dataset_encryption=self.dataset_encryption_config,
+            # dataset_encryption=self.dataset_encryption_config,
         )
         return type(self)._reconstruct, (kwargs,)
 
