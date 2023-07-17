@@ -94,7 +94,7 @@ def test_dataset_encryption_decryption():
     mockfs = fs._MockFileSystem()
     mockfs.create_dir('/')
 
-    ds.write_dataset(data=dataset, base_dir="sample_dataset", format=pformat, write_options=write_options, filesystem=mockfs)                     
+    ds.write_dataset(data=dataset, base_dir="sample_dataset", format=pformat, file_options=write_options, filesystem=mockfs)                     
     dataset2 = ds.dataset('sample_dataset', format=pformat, filesystem=mockfs)
 
     assert table.equals(dataset2.to_table())
