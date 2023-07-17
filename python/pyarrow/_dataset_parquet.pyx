@@ -576,6 +576,7 @@ cdef class ParquetFileWriteOptions(FileWriteOptions):
             "use_deprecated_int96_timestamps",
             "coerce_timestamps",
             "allow_truncated_timestamps",
+            "use_compliant_nested_type",
         }
 
         setters = set()
@@ -639,7 +640,7 @@ cdef class ParquetFileWriteOptions(FileWriteOptions):
         self._properties = dict(
             use_dictionary=True,
             compression="snappy",
-            version="1.0",
+            version="2.6",
             write_statistics=None,
             data_page_size=None,
             compression_level=None,
@@ -654,6 +655,11 @@ cdef class ParquetFileWriteOptions(FileWriteOptions):
         )
         self._set_properties()
         self._set_arrow_properties()
+
+    def __repr__(self):
+        return "<pyarrow.dataset.ParquetFileWriteOptions {0}>".format(
+            " ".join([f"{key}={value}" for key, value in self._properties.items()])
+        )
 
 
 cdef set _PARQUET_READ_OPTIONS = {
@@ -884,7 +890,7 @@ cdef class ParquetFactoryOptions(_Weakrefable):
         c_factory = self.options.partitioning.factory()
         if c_factory.get() == nullptr:
             return None
-        return PartitioningFactory.wrap(c_factory)
+        return PartitioningFactory.wrap(c_factory, None, None)
 
     @partitioning_factory.setter
     def partitioning_factory(self, PartitioningFactory value):
