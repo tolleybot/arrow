@@ -86,7 +86,7 @@ def test_dataset_encryption_decryption():
    
     # set encryption config for parquet fragment scan options
     pq_scan_opts = ds.ParquetFragmentScanOptions()
-    pq_scan_opts.daset_encryption_config = de    
+    pq_scan_opts.dataset_encryption_config = de    
     pformat = pa.dataset.ParquetFileFormat(default_fragment_scan_options=pq_scan_opts)
     # create write_options with dataset encryption config
     write_options = pformat.make_write_options(dataset_encryption_config=de)
