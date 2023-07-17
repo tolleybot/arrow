@@ -64,8 +64,8 @@ cdef extern from "arrow/dataset/api.h" namespace "arrow::dataset" nogil:
             "arrow::dataset::ParquetFragmentScanOptions"(CFragmentScanOptions):
         shared_ptr[CReaderProperties] reader_properties
         shared_ptr[ArrowReaderProperties] arrow_reader_properties
-        shared_ptr[CDatasetEncryptionConfiguration] GetDatasetEncryptionConfig()
-        void SetDatasetEncryptionConfig(shared_ptr[CDatasetEncryptionConfiguration] dataset_encryption_config)
+        shared_ptr[CDatasetDecryptionConfiguration] GetDatasetDecryptionConfig()
+        void SetDatasetDecryptionConfig(shared_ptr[CDatasetDecryptionConfiguration] dataset_decryption_config)
 
     cdef cppclass CParquetFactoryOptions \
             "arrow::dataset::ParquetFactoryOptions":

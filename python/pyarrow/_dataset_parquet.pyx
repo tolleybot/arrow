@@ -68,26 +68,19 @@ cdef class DatasetEncryptionConfiguration(_Weakrefable):
     __slots__ = ()
 
     def __cinit__(self, object crypto_factory, object kms_connection_config,
-                  object encryption_config=None, object decryption_config=None):
+                  object encryption_config):
 
         cdef shared_ptr[CEncryptionConfiguration] c_encryption_config
-        cdef shared_ptr[CDecryptionConfiguration] c_decryption_config
 
-        if encryption_config is None and decryption_config is None:
+        if encryption_config is None:
             raise ValueError(
-                "Both encryption_config and decryption_config cannot be None")
+                "encryption_config cannot be None")
 
         self.c_config.reset(new CDatasetEncryptionConfiguration())
-        if encryption_config is not None:
-            c_encryption_config = pyarrow_unwrap_encryptionconfig(encryption_config)
-        if decryption_config is not None:
-            c_decryption_config = pyarrow_unwrap_decryptionconfig(decryption_config)
-
         self.c_config.get().Setup(pyarrow_unwrap_cryptofactory(crypto_factory),
                                   pyarrow_unwrap_kmsconnectionconfig(
                                       kms_connection_config),
-                                  c_encryption_config,
-                                  c_decryption_config)
+                                  pyarrow_unwrap_encryptionconfig(encryption_config))
 
     @staticmethod
     cdef wrap(shared_ptr[CDatasetEncryptionConfiguration] c_config):
@@ -97,6 +90,35 @@ cdef class DatasetEncryptionConfiguration(_Weakrefable):
 
     cdef shared_ptr[CDatasetEncryptionConfiguration] unwrap(self):
         return self.c_config
+
+cdef class DatasetDecryptionConfiguration(_Weakrefable):
+    cdef:
+        shared_ptr[CDatasetDecryptionConfiguration] c_decryption_config
+
+     # Avoid mistakingly creating attributes
+    __slots__ = ()
+
+    def __cinit__(self, object crypto_factory, object kms_connection_config,
+                  object decryption_config):
+
+        if decryption_config is None:
+            raise ValueError(
+                "decryption_config cannot be None")
+
+        self.c_decryption_config.reset(new CDatasetDecryptionConfiguration())
+        self.c_decryption_config.get().Setup(pyarrow_unwrap_cryptofactory(crypto_factory),
+                                             pyarrow_unwrap_kmsconnectionconfig(
+            kms_connection_config),
+            pyarrow_unwrap_decryptionconfig(decryption_config))
+
+    @staticmethod
+    cdef wrap(shared_ptr[CDatasetDecryptionConfiguration] c_config):
+        cdef DatasetDecryptionConfiguration python_config = DatasetDecryptionConfiguration.__new__(DatasetDecryptionConfiguration)
+        python_config.c_decryption_config = c_config
+        return python_config
+
+    cdef shared_ptr[CDatasetDecryptionConfiguration] unwrap(self):
+        return self.c_decryption_config
 
 cdef class ParquetFileFormat(FileFormat):
     """
@@ -108,10 +130,6 @@ cdef class ParquetFileFormat(FileFormat):
         Read options for the file.
     default_fragment_scan_options : ParquetFragmentScanOptions
         Scan Options for the file.
-    dataset_encryption_config : Encryption / Decryption configuration 
-        Configuration or settings related to how PyArrow should encrypt Parquet 
-        files when writing to them. This may include settings like the encryption 
-        algorithm, encryption key, etc.
     **kwargs : dict
         Additional options for read option or scan option
     """
@@ -691,14 +709,14 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
         If not None, override the maximum total size of containers allocated
         when decoding Thrift structures. The default limit should be
         sufficient for most Parquet files.
-    dataset_encryption_config : DatasetEncryptionConfiguration, default None
-        If not None, use the provided DatasetEncryptionConfiguration to decrypt the
+    dataset_decryption_config : DatasetDecryptionConfiguration, default None
+        If not None, use the provided DatasetDecryptionConfiguration to decrypt the
         Parquet file.
     """
 
     cdef:
         CParquetFragmentScanOptions* parquet_options
-        DatasetEncryptionConfiguration _dataset_encryption_config
+        DatasetDecryptionConfiguration _dataset_decryption_config
 
     # Avoid mistakingly creating attributes
     __slots__ = ()
@@ -708,7 +726,7 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
                  bint pre_buffer=False,
                  thrift_string_size_limit=None,
                  thrift_container_size_limit=None,
-                 dataset_encryption_config=None):
+                 dataset_decryption_config=None):
         self.init(shared_ptr[CFragmentScanOptions](
             new CParquetFragmentScanOptions()))
         self.use_buffered_stream = use_buffered_stream
@@ -719,8 +737,8 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
         if thrift_container_size_limit is not None:
             self.thrift_container_size_limit = thrift_container_size_limit
 
-        if dataset_encryption_config:
-            self.SetDatasetEncryptionConfig(dataset_encryption_config)
+        if dataset_decryption_config:
+            self.SetDatasetDecryptionConfig(dataset_decryption_config)
 
     cdef void init(self, const shared_ptr[CFragmentScanOptions]& sp):
         FragmentScanOptions.init(self, sp)
@@ -733,12 +751,12 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
         return self.parquet_options.arrow_reader_properties.get()
 
     @property
-    def dataset_encryption_config(self):
-        return self._dataset_encryption_config
+    def dataset_decryption_config(self):
+        return self._dataset_decryption_config
 
-    @dataset_encryption_config.setter
-    def dataset_encryption_config(self, DatasetEncryptionConfiguration config):
-        self.SetDatasetEncryptionConfig(config)
+    @dataset_decryption_config.setter
+    def dataset_decryption_config(self, DatasetDecryptionConfiguration config):
+        self.SetDatasetDecryptionConfig(config)
 
     @property
     def use_buffered_stream(self):
@@ -799,13 +817,13 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
             other.thrift_container_size_limit)
         return attrs == other_attrs
 
-    def SetDatasetEncryptionConfig(self, DatasetEncryptionConfiguration config):
-        cdef shared_ptr[CDatasetEncryptionConfiguration] c_config
-        if not isinstance(config, DatasetEncryptionConfiguration):
-            raise ValueError("config must be a DatasetEncryptionConfiguration")
-        self._dataset_encryption_config = config
+    def SetDatasetDecryptionConfig(self, DatasetDecryptionConfiguration config):
+        cdef shared_ptr[CDatasetDecryptionConfiguration] c_config
+        if not isinstance(config, DatasetDecryptionConfiguration):
+            raise ValueError("config must be a DatasetDecryptionConfiguration")
+        self._dataset_decryption_config = config
         c_config = config.unwrap()
-        self.parquet_options.SetDatasetEncryptionConfig(c_config)
+        self.parquet_options.SetDatasetDecryptionConfig(c_config)
 
     @classmethod
     def _reconstruct(cls, kwargs):
@@ -818,7 +836,6 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
             pre_buffer=self.pre_buffer,
             thrift_string_size_limit=self.thrift_string_size_limit,
             thrift_container_size_limit=self.thrift_container_size_limit,
-            # dataset_encryption=self.dataset_encryption_config,
         )
         return type(self)._reconstruct, (kwargs,)
 
