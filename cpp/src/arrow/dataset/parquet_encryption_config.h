@@ -30,6 +30,29 @@ namespace dataset {
 struct ARROW_DS_EXPORT DatasetEncryptionConfiguration {
   DatasetEncryptionConfiguration()
       : kms_connection_config(
+            std::make_shared<parquet::encryption::KmsConnectionConfig>()) {}
+
+  void Setup(
+      std::shared_ptr<parquet::encryption::CryptoFactory> crypto_factory,
+      std::shared_ptr<parquet::encryption::KmsConnectionConfig> kms_connection_config,
+      std::shared_ptr<parquet::encryption::EncryptionConfiguration> encryption_config) {
+    ARROW_CHECK(crypto_factory != NULLPTR);
+    ARROW_CHECK(kms_connection_config != NULLPTR);
+    ARROW_CHECK(encryption_config != NULLPTR);
+    this->crypto_factory = std::move(crypto_factory);
+    this->kms_connection_config = std::move(kms_connection_config);
+    this->encryption_config = std::move(encryption_config);
+  }
+
+  std::shared_ptr<parquet::encryption::CryptoFactory> crypto_factory;
+  std::shared_ptr<parquet::encryption::KmsConnectionConfig> kms_connection_config;
+  std::shared_ptr<parquet::encryption::EncryptionConfiguration> encryption_config;
+};
+
+/// core class, that translates the parameters of high level encryption
+struct ARROW_DS_EXPORT DatasetDecryptionConfiguration {
+  DatasetDecryptionConfiguration()
+      : kms_connection_config(
             std::make_shared<parquet::encryption::KmsConnectionConfig>()),
         decryption_config(
             std::make_shared<parquet::encryption::DecryptionConfiguration>()) {}
@@ -37,24 +60,17 @@ struct ARROW_DS_EXPORT DatasetEncryptionConfiguration {
   void Setup(
       std::shared_ptr<parquet::encryption::CryptoFactory> crypto_factory,
       std::shared_ptr<parquet::encryption::KmsConnectionConfig> kms_connection_config,
-      std::shared_ptr<parquet::encryption::EncryptionConfiguration> encryption_config =
-          NULLPTR,
-      std::shared_ptr<parquet::encryption::DecryptionConfiguration> decryption_config =
-          NULLPTR) {
+      std::shared_ptr<parquet::encryption::DecryptionConfiguration> decryption_config) {
     ARROW_CHECK(crypto_factory != NULLPTR);
     ARROW_CHECK(kms_connection_config != NULLPTR);
-    ARROW_CHECK(encryption_config != NULLPTR || decryption_config != NULLPTR);
+    ARROW_CHECK(decryption_config != NULLPTR);
     this->crypto_factory = std::move(crypto_factory);
     this->kms_connection_config = std::move(kms_connection_config);
-    this->encryption_config = std::move(encryption_config);
-    if (decryption_config != NULLPTR) {
-      this->decryption_config = std::move(decryption_config);
-    }
+    this->decryption_config = std::move(decryption_config);
   }
 
   std::shared_ptr<parquet::encryption::CryptoFactory> crypto_factory;
   std::shared_ptr<parquet::encryption::KmsConnectionConfig> kms_connection_config;
-  std::shared_ptr<parquet::encryption::EncryptionConfiguration> encryption_config;
   std::shared_ptr<parquet::encryption::DecryptionConfiguration> decryption_config;
 };
 }  // namespace dataset

@@ -71,14 +71,14 @@ parquet::ReaderProperties MakeReaderProperties(
   properties.set_buffer_size(parquet_scan_options->reader_properties->buffer_size());
 
 #ifdef PARQUET_REQUIRE_ENCRYPTION
-  std::shared_ptr<DatasetEncryptionConfiguration> dataset_encrypt_config =
-      parquet_scan_options->GetDatasetEncryptionConfig();
+  std::shared_ptr<DatasetDecryptionConfiguration> dataset_decrypt_config =
+      parquet_scan_options->GetDatasetDecryptionConfig();
 
-  if (dataset_encrypt_config != nullptr) {
+  if (dataset_decrypt_config != nullptr) {
     auto file_decryption_prop =
-        dataset_encrypt_config->crypto_factory->GetFileDecryptionProperties(
-            *dataset_encrypt_config->kms_connection_config,
-            *dataset_encrypt_config->decryption_config, path, filesystem);
+        dataset_decrypt_config->crypto_factory->GetFileDecryptionProperties(
+            *dataset_decrypt_config->kms_connection_config,
+            *dataset_decrypt_config->decryption_config, path, filesystem);
 
     parquet_scan_options->reader_properties->file_decryption_properties(
         std::move(file_decryption_prop));

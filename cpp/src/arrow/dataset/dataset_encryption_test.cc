@@ -46,11 +46,13 @@ namespace dataset {
 class DatasetEncryptionTest : public ::testing::Test {
  protected:
   // Create our parquetfileformat with encryption properties
-  std::shared_ptr<DatasetEncryptionConfiguration> CreateDatasetEncryptionConfig(
-      const std::string_view* column_ids, const std::string_view* column_keys,
-      int num_columns, std::string_view footer_id, std::string_view footer_key,
-      std::string_view footer_key_name = "footer_key",
-      std::string_view column_key_mapping = "col_key: a") {
+  std::pair<std::shared_ptr<DatasetEncryptionConfiguration>,
+            std::shared_ptr<DatasetDecryptionConfiguration>>
+  CreateDatasetEncryptionConfig(const std::string_view* column_ids,
+                                const std::string_view* column_keys, int num_columns,
+                                std::string_view footer_id, std::string_view footer_key,
+                                std::string_view footer_key_name = "footer_key",
+                                std::string_view column_key_mapping = "col_key: a") {
     auto key_list =
         BuildKeyMap(column_ids, column_keys, num_columns, footer_id, footer_key);
 
@@ -69,7 +71,13 @@ class DatasetEncryptionTest : public ::testing::Test {
     dataset_encryption_config.crypto_factory = crypto_factory;
     dataset_encryption_config.encryption_config = encryption_config;
 
-    return std::make_shared<DatasetEncryptionConfiguration>(dataset_encryption_config);
+    // DatasetDecryptionConfiguration
+    DatasetDecryptionConfiguration dataset_decryption_config;
+    dataset_decryption_config.crypto_factory = crypto_factory;
+
+    return std::make_pair(
+        std::make_shared<DatasetEncryptionConfiguration>(dataset_encryption_config),
+        std::make_shared<DatasetDecryptionConfiguration>(dataset_decryption_config));
   }
 
   // utility to build the key map
@@ -145,18 +153,17 @@ class DatasetEncryptionTest : public ::testing::Test {
 // Parquet file while applying distinct file encryption properties to each
 // file within the test. This is based on the selected columns.
 TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
-  auto dataset_encryption_config =
+  auto [dataset_encryption_config, dataset_decryption_config] =
       CreateDatasetEncryptionConfig(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
                                     kFooterKeyMasterKeyId, kFooterKeyMasterKey);
 
   auto parquet_scan_options = std::make_shared<ParquetFragmentScanOptions>();
-  parquet_scan_options->SetDatasetEncryptionConfig(dataset_encryption_config);
+  parquet_scan_options->SetDatasetDecryptionConfig(dataset_decryption_config);
 
   // create our Parquet file format object
   auto file_format = std::make_shared<ParquetFileFormat>();
   // update default scan options
   file_format->default_fragment_scan_options = parquet_scan_options;
-
   // set write options
   auto file_write_options = file_format->DefaultWriteOptions();
   std::shared_ptr<ParquetFileWriteOptions> parquet_file_write_options =
@@ -233,12 +240,12 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
 
 // Write dataset to disk with encryption and then read in a single parquet file
 TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
-  auto dataset_encryption_config =
+  auto [dataset_encryption_config, dataset_decryption_config] =
       CreateDatasetEncryptionConfig(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
                                     kFooterKeyMasterKeyId, kFooterKeyMasterKey);
 
   auto parquet_scan_options = std::make_shared<ParquetFragmentScanOptions>();
-  parquet_scan_options->SetDatasetEncryptionConfig(dataset_encryption_config);
+  parquet_scan_options->SetDatasetDecryptionConfig(dataset_decryption_config);
 
   // create our Parquet file format object
   auto file_format = std::make_shared<ParquetFileFormat>();
@@ -283,12 +290,12 @@ TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
   // Define the path to the encrypted Parquet file
   std::string file_path = "part=a/part0.parquet";
 
-  auto crypto_factory = dataset_encryption_config->crypto_factory;
+  auto crypto_factory = dataset_decryption_config->crypto_factory;
 
   // Get the FileDecryptionProperties object using the CryptoFactory object
   auto file_decryption_properties = crypto_factory->GetFileDecryptionProperties(
-      *dataset_encryption_config->kms_connection_config,
-      *dataset_encryption_config->decryption_config);
+      *dataset_decryption_config->kms_connection_config,
+      *dataset_decryption_config->decryption_config);
 
   // Create the ReaderProperties object using the FileDecryptionProperties object
   auto reader_properties = std::make_shared<parquet::ReaderProperties>();
@@ -315,7 +322,7 @@ TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
 // verify if Parquet metadata can be read without decryption
 // properties when the footer is encrypted:
 TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
-  auto dataset_encryption_config =
+  auto [dataset_encryption_config, dataset_decryption_config] =
       CreateDatasetEncryptionConfig(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
                                     kFooterKeyMasterKeyId, kFooterKeyMasterKey);
   // create our Parquet file format object
@@ -358,12 +365,12 @@ TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
   // Define the path to the encrypted Parquet file
   std::string file_path = "part=a/part0.parquet";
 
-  auto crypto_factory = dataset_encryption_config->crypto_factory;
+  auto crypto_factory = dataset_decryption_config->crypto_factory;
 
   // Get the FileDecryptionProperties object using the CryptoFactory object
   auto file_decryption_properties = crypto_factory->GetFileDecryptionProperties(
-      *dataset_encryption_config->kms_connection_config,
-      *dataset_encryption_config->decryption_config);
+      *dataset_decryption_config->kms_connection_config,
+      *dataset_decryption_config->decryption_config);
 
   // Create the ReaderProperties object using the FileDecryptionProperties object
   auto reader_properties = std::make_shared<parquet::ReaderProperties>();
