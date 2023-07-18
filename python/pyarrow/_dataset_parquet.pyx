@@ -88,7 +88,7 @@ cdef class DatasetEncryptionConfiguration(_Weakrefable):
     @staticmethod
     cdef wrap(shared_ptr[CDatasetEncryptionConfiguration] c_config):
         cdef DatasetEncryptionConfiguration python_config = DatasetEncryptionConfiguration.__new__(DatasetEncryptionConfiguration)
-        python_config.c_encryption_config = c_config
+        python_config.c_config = c_config
         return python_config
 
     cdef shared_ptr[CDatasetEncryptionConfiguration] unwrap(self):
@@ -104,7 +104,7 @@ cdef class DatasetDecryptionConfiguration(_Weakrefable):
     def __cinit__(self, object crypto_factory, object kms_connection_config,
                   object decryption_config):
 
-        cdef shared_ptr[CEncryptionConfiguration] c_decryption_config
+        cdef shared_ptr[CDecryptionConfiguration] c_decryption_config
 
         if decryption_config is None:
             raise ValueError(
@@ -122,7 +122,7 @@ cdef class DatasetDecryptionConfiguration(_Weakrefable):
     @staticmethod
     cdef wrap(shared_ptr[CDatasetDecryptionConfiguration] c_config):
         cdef DatasetDecryptionConfiguration python_config = DatasetDecryptionConfiguration.__new__(DatasetDecryptionConfiguration)
-        python_config.c_decryption_config = c_config
+        python_config.c_config = c_config
         return python_config
 
     cdef shared_ptr[CDatasetDecryptionConfiguration] unwrap(self):
