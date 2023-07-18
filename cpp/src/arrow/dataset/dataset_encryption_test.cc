@@ -101,7 +101,7 @@ class DatasetEncryptionTest : public ::testing::Test {
   }
 
   // A utility function to validate our files were written out */
-  void ValidateFilesExist(const std::shared_ptr<arrow::fs::internal::MockFileSystem>& fs,
+  void ValidateFilesExist(const std::shared_ptr<arrow::fs::FileSystem>& fs,
                           const std::vector<std::string>& files) {
     for (const auto& file_path : files) {
       ASSERT_OK_AND_ASSIGN(auto result, fs->GetFileInfo(file_path));
@@ -179,10 +179,7 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
   ASSERT_OK_AND_ASSIGN(auto file_system,
                        ::arrow::fs::internal::MockFileSystem::Make(mock_now, {}));
   // create filesystem
-  ASSERT_OK(file_system->CreateDir(kBaseDir));
-
-  auto mock_fs =
-      std::dynamic_pointer_cast<::arrow::fs::internal::MockFileSystem>(file_system);
+  ASSERT_OK(file_system->CreateDir(std::string(kBaseDir)));
 
   auto partition_schema = ::arrow::schema({::arrow::field("part", ::arrow::utf8())});
   auto partitioning =
@@ -206,7 +203,7 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
                                     "part=e/part0.parquet", "part=f/part0.parquet",
                                     "part=g/part0.parquet", "part=h/part0.parquet",
                                     "part=i/part0.parquet", "part=j/part0.parquet"};
-  ValidateFilesExist(mock_fs, files);
+  ValidateFilesExist(file_system, files);
 
   // ----- Read the Dataset -----
 
@@ -221,7 +218,7 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
   factory_options.partition_base_dir = kBaseDir;
   ASSERT_OK_AND_ASSIGN(auto dataset_factory,
                        arrow::dataset::FileSystemDatasetFactory::Make(
-                           mock_fs, selector, file_format, factory_options));
+                           file_system, selector, file_format, factory_options));
   // Create a Dataset
   ASSERT_OK_AND_ASSIGN(auto dataset_in, dataset_factory->Finish());
 
@@ -267,10 +264,7 @@ TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
   ASSERT_OK_AND_ASSIGN(auto file_system,
                        ::arrow::fs::internal::MockFileSystem::Make(mock_now, {}));
   // create filesystem
-  ASSERT_OK(file_system->CreateDir(""));
-
-  auto mock_fs =
-      std::dynamic_pointer_cast<::arrow::fs::internal::MockFileSystem>(file_system);
+  ASSERT_OK(file_system->CreateDir(std::string(kBaseDir)));
 
   auto partition_schema = ::arrow::schema({::arrow::field("part", ::arrow::utf8())});
   auto partitioning =
@@ -307,7 +301,7 @@ TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
 
   // Open the Parquet file using the MockFileSystem
   std::shared_ptr<arrow::io::RandomAccessFile> input;
-  ASSERT_OK_AND_ASSIGN(input, mock_fs->OpenInputFile(file_path));
+  ASSERT_OK_AND_ASSIGN(input, file_system->OpenInputFile(file_path));
 
   parquet::arrow::FileReaderBuilder reader_builder;
   ASSERT_OK(reader_builder.Open(input, *reader_properties));
@@ -342,10 +336,7 @@ TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
   ASSERT_OK_AND_ASSIGN(auto file_system,
                        ::arrow::fs::internal::MockFileSystem::Make(mock_now, {}));
   // create filesystem
-  ASSERT_OK(file_system->CreateDir(""));
-
-  auto mock_fs =
-      std::dynamic_pointer_cast<::arrow::fs::internal::MockFileSystem>(file_system);
+  ASSERT_OK(file_system->CreateDir(std::string(kBaseDir)));
 
   auto partition_schema = ::arrow::schema({::arrow::field("part", ::arrow::utf8())});
   auto partitioning =
@@ -382,7 +373,7 @@ TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
 
   // Open the Parquet file using the MockFileSystem
   std::shared_ptr<arrow::io::RandomAccessFile> input;
-  ASSERT_OK_AND_ASSIGN(input, mock_fs->OpenInputFile(file_path));
+  ASSERT_OK_AND_ASSIGN(input, file_system->OpenInputFile(file_path));
 
   parquet::arrow::FileReaderBuilder reader_builder;
   ASSERT_OK(reader_builder.Open(input, *reader_properties));
