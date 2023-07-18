@@ -231,11 +231,8 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
   ASSERT_OK_AND_ASSIGN(auto scanner_builder_in, dataset_in->NewScan());
   ASSERT_OK_AND_ASSIGN(auto scanner_in, scanner_builder_in->Finish());
 
-  // Scan the dataset and process the record batches using the callback function
-  arrow::Status status = scanner_in->Scan(visitor);
-
-  // Check if there was an error during iteration
-  ASSERT_OK(status);
+  // Scan the dataset and check if there was an error during iteration
+  ASSERT_OK(scanner_in->Scan(visitor));
 }
 
 // Write dataset to disk with encryption and then read in a single parquet file
