@@ -76,8 +76,8 @@ cdef class DatasetEncryptionConfiguration(_Weakrefable):
             raise ValueError(
                 "encryption_config cannot be None")
 
-        self.c_config.reset(new CDatasetEncryptionConfiguration())
-        self.c_config.get().Setup(pyarrow_unwrap_cryptofactory(crypto_factory),
+        self.c_encryption_config.reset(new CDatasetEncryptionConfiguration())
+        self.c_encryption_config.get().Setup(pyarrow_unwrap_cryptofactory(crypto_factory),
                                   pyarrow_unwrap_kmsconnectionconfig(
                                       kms_connection_config),
                                   pyarrow_unwrap_encryptionconfig(encryption_config))
@@ -85,11 +85,11 @@ cdef class DatasetEncryptionConfiguration(_Weakrefable):
     @staticmethod
     cdef wrap(shared_ptr[CDatasetEncryptionConfiguration] c_config):
         cdef DatasetEncryptionConfiguration python_config = DatasetEncryptionConfiguration.__new__(DatasetEncryptionConfiguration)
-        python_config.c_config = c_config
+        python_config.c_encryption_config = c_config
         return python_config
 
     cdef shared_ptr[CDatasetEncryptionConfiguration] unwrap(self):
-        return self.c_config
+        return self.c_encryption_config
 
 cdef class DatasetDecryptionConfiguration(_Weakrefable):
     cdef:
