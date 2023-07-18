@@ -252,7 +252,7 @@ TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
   // set write options
   auto file_write_options = file_format->DefaultWriteOptions();
   std::shared_ptr<ParquetFileWriteOptions> parquet_file_write_options =
-      std::static_pointer_cast<ParquetFileWriteOptions>(file_write_options);
+      internal::checked_pointer_cast<ParquetFileWriteOptions>(file_write_options);
   parquet_file_write_options->SetDatasetEncryptionConfig(dataset_encryption_config);
 
   // create our mock file system
