@@ -40,6 +40,8 @@ constexpr std::string_view kColumnMasterKeysIds[] = {"col_key"};
 constexpr std::string_view kBaseDir = "";
 const int kNumColumns = 1;
 
+using arrow::internal::checked_pointer_cast;
+
 namespace arrow {
 namespace dataset {
 
@@ -69,11 +71,9 @@ class DatasetEncryptionTest : public ::testing::Test {
     auto kms_connection_config =
         std::make_shared<parquet::encryption::KmsConnectionConfig>();
 
-    // DatasetEncryptionConfiguration
     DatasetEncryptionConfiguration dataset_encryption_config;
     dataset_encryption_config.Setup(crypto_factory, kms_connection_config,
                                     encryption_config);
-    // DatasetDecryptionConfiguration
     auto decryption_config =
         std::make_shared<parquet::encryption::DecryptionConfiguration>();
     DatasetDecryptionConfiguration dataset_decryption_config;
@@ -84,17 +84,17 @@ class DatasetEncryptionTest : public ::testing::Test {
         std::make_shared<DatasetDecryptionConfiguration>(dataset_decryption_config));
   }
 
-  // utility to build the key map
+  // Utility to build the key map
   std::unordered_map<std::string, std::string> BuildKeyMap(
       const std::string_view* column_ids, const std::string_view* column_keys,
       int num_columns, const std::string_view& footer_id,
       const std::string_view& footer_key) {
     std::unordered_map<std::string, std::string> key_map;
-    // add column keys
+    // Add column keys
     for (int i = 0; i < num_columns; i++) {
       key_map.insert({std::string(column_ids[i]), std::string(column_keys[i])});
     }
-    // add footer key
+    // Add footer key
     key_map.insert({std::string(footer_id), std::string(footer_key)});
 
     return key_map;
@@ -164,21 +164,20 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
   auto parquet_scan_options = std::make_shared<ParquetFragmentScanOptions>();
   parquet_scan_options->SetDatasetDecryptionConfig(dataset_decryption_config);
 
-  // create our Parquet file format object
+  // Create our Parquet file format object
   auto file_format = std::make_shared<ParquetFileFormat>();
-  // update default scan options
+  // Update default scan options
   file_format->default_fragment_scan_options = parquet_scan_options;
-  // set write options
+  // Set write options
   auto parquet_file_write_options =
-      internal::checked_pointer_cast<ParquetFileWriteOptions>(
-          file_format->DefaultWriteOptions());
+      checked_pointer_cast<ParquetFileWriteOptions>(file_format->DefaultWriteOptions());
   parquet_file_write_options->SetDatasetEncryptionConfig(dataset_encryption_config);
 
-  // create our mock file system
+  // Create our mock file system
   ::arrow::fs::TimePoint mock_now = std::chrono::system_clock::now();
   ASSERT_OK_AND_ASSIGN(auto file_system,
                        ::arrow::fs::internal::MockFileSystem::Make(mock_now, {}));
-  // create filesystem
+  // Create filesystem
   ASSERT_OK(file_system->CreateDir(std::string(kBaseDir)));
 
   auto partition_schema = ::arrow::schema({::arrow::field("part", ::arrow::utf8())});
@@ -245,22 +244,22 @@ TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
   auto parquet_scan_options = std::make_shared<ParquetFragmentScanOptions>();
   parquet_scan_options->SetDatasetDecryptionConfig(dataset_decryption_config);
 
-  // create our Parquet file format object
+  // Create our Parquet file format object
   auto file_format = std::make_shared<ParquetFileFormat>();
-  // update default scan options
+  // Update default scan options
   file_format->default_fragment_scan_options = parquet_scan_options;
 
-  // set write options
+  // Set write options
   auto file_write_options = file_format->DefaultWriteOptions();
   std::shared_ptr<ParquetFileWriteOptions> parquet_file_write_options =
-      internal::checked_pointer_cast<ParquetFileWriteOptions>(file_write_options);
+      checked_pointer_cast<ParquetFileWriteOptions>(file_write_options);
   parquet_file_write_options->SetDatasetEncryptionConfig(dataset_encryption_config);
 
-  // create our mock file system
+  // Create our mock file system
   ::arrow::fs::TimePoint mock_now = std::chrono::system_clock::now();
   ASSERT_OK_AND_ASSIGN(auto file_system,
                        ::arrow::fs::internal::MockFileSystem::Make(mock_now, {}));
-  // create filesystem
+  // Create filesystem
   ASSERT_OK(file_system->CreateDir(std::string(kBaseDir)));
 
   auto partition_schema = ::arrow::schema({::arrow::field("part", ::arrow::utf8())});
@@ -312,27 +311,46 @@ TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
   // Add assertions to check the contents of the table
   ASSERT_EQ(table->num_rows(), 1);
   ASSERT_EQ(table->num_columns(), 3);
+
+  auto a_col = table->column(0);
+  auto b_col = table->column(1);
+  auto c_col = table->column(2);
+
+  // Validate column "a"
+  auto a_values =
+      std::static_pointer_cast<arrow::Int64Array>(a_col->chunk(0))->raw_values();
+  ASSERT_EQ(a_values[0], 0);
+
+  // Validate column "b"
+  auto b_values =
+      std::static_pointer_cast<arrow::Int64Array>(b_col->chunk(0))->raw_values();
+  ASSERT_EQ(b_values[0], 9);
+
+  // Validate column "c"
+  auto c_values =
+      std::static_pointer_cast<arrow::Int64Array>(c_col->chunk(0))->raw_values();
+  ASSERT_EQ(c_values[0], 1);
 }
 
-// verify if Parquet metadata can be read without decryption
+// Verify if Parquet metadata can be read without decryption
 // properties when the footer is encrypted:
 TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
   auto [dataset_encryption_config, dataset_decryption_config] =
       CreateDatasetEncryptionConfig(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
                                     kFooterKeyMasterKeyId, kFooterKeyMasterKey);
-  // create our Parquet file format object
+  // Create our Parquet file format object
   auto file_format = std::make_shared<ParquetFileFormat>();
-  // set write options
+  // Set write options
   auto file_write_options = file_format->DefaultWriteOptions();
   std::shared_ptr<ParquetFileWriteOptions> parquet_file_write_options =
-      internal::checked_pointer_cast<ParquetFileWriteOptions>(file_write_options);
+      checked_pointer_cast<ParquetFileWriteOptions>(file_write_options);
   parquet_file_write_options->SetDatasetEncryptionConfig(dataset_encryption_config);
 
-  // create our mock file system
+  // Create our mock file system
   ::arrow::fs::TimePoint mock_now = std::chrono::system_clock::now();
   ASSERT_OK_AND_ASSIGN(auto file_system,
                        ::arrow::fs::internal::MockFileSystem::Make(mock_now, {}));
-  // create filesystem
+  // Create filesystem
   ASSERT_OK(file_system->CreateDir(std::string(kBaseDir)));
 
   auto partition_schema = ::arrow::schema({::arrow::field("part", ::arrow::utf8())});
@@ -388,6 +406,25 @@ TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
   // Add assertions to check the contents of the table
   ASSERT_EQ(table->num_rows(), 1);
   ASSERT_EQ(table->num_columns(), 3);
+
+  auto a_col = table->column(0);
+  auto b_col = table->column(1);
+  auto c_col = table->column(2);
+
+  // Validate column "a"
+  auto a_values =
+      std::static_pointer_cast<arrow::Int64Array>(a_col->chunk(0))->raw_values();
+  ASSERT_EQ(a_values[0], 0);
+
+  // Validate column "b"
+  auto b_values =
+      std::static_pointer_cast<arrow::Int64Array>(b_col->chunk(0))->raw_values();
+  ASSERT_EQ(b_values[0], 9);
+
+  // Validate column "c"
+  auto c_values =
+      std::static_pointer_cast<arrow::Int64Array>(c_col->chunk(0))->raw_values();
+  ASSERT_EQ(c_values[0], 1);
 }
 
 }  // namespace dataset
