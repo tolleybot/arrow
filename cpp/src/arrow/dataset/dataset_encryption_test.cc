@@ -178,7 +178,7 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
   ASSERT_OK(file_system->CreateDir(""));
 
   auto mock_fs =
-      std::dynamic_pointer_cast<::arrow::fs::internal::MockFileSystem>(file_system);
+      internal::checked_pointer_cast<::arrow::fs::internal::MockFileSystem>(file_system);
 
   auto partition_schema = ::arrow::schema({::arrow::field("part", ::arrow::utf8())});
   auto partitioning =
