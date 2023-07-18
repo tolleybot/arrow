@@ -45,7 +45,7 @@ namespace dataset {
 
 class DatasetEncryptionTest : public ::testing::Test {
  protected:
-  // Create our parquetfileformat with encryption properties
+  // Create dataset encryption properties
   std::pair<std::shared_ptr<DatasetEncryptionConfiguration>,
             std::shared_ptr<DatasetDecryptionConfiguration>>
   CreateDatasetEncryptionConfig(const std::string_view* column_ids,
