@@ -106,7 +106,7 @@ class DatasetEncryptionTest : public ::testing::Test {
     for (const auto& file_path : files) {
       ASSERT_OK_AND_ASSIGN(auto result, fs->GetFileInfo(file_path));
 
-      ASSERT_NE(result.type(), arrow::fs::FileType::NotFound);
+      ASSERT_EQ(result.type(), arrow::fs::FileType::File);
     }
   }
 
