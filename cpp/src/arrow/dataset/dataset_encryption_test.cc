@@ -47,6 +47,49 @@ namespace dataset {
 
 class DatasetEncryptionTest : public ::testing::Test {
  protected:
+  // This function creates a mock file system using the current time point, creates a
+  // directory with the given base directory path, and writes a dataset to it using
+  // provided Parquet file write options. The dataset is partitioned using a Hive
+  // partitioning scheme. The function also checks if the written files exist in the file
+  // system.
+  ::arrow::Result<std::shared_ptr<::arrow::fs::FileSystem>>
+  CreateMockFileSystemAndWriteData(
+      const std::string& base_dir,
+      const std::shared_ptr<FileWriteOptions>& parquet_file_write_options) {
+    // Create our mock file system
+    ::arrow::fs::TimePoint mock_now = std::chrono::system_clock::now();
+    ARROW_ASSIGN_OR_RAISE(auto file_system,
+                          ::arrow::fs::internal::MockFileSystem::Make(mock_now, {}));
+    // Create filesystem
+    RETURN_NOT_OK(file_system->CreateDir(base_dir));
+
+    auto partition_schema = ::arrow::schema({::arrow::field("part", ::arrow::utf8())});
+    auto partitioning =
+        std::make_shared<::arrow::dataset::HivePartitioning>(partition_schema);
+
+    // ----- Write the Dataset ----
+    auto dataset_out = BuildTable();
+    ARROW_ASSIGN_OR_RAISE(auto scanner_builder_out, dataset_out->NewScan());
+    ARROW_ASSIGN_OR_RAISE(auto scanner_out, scanner_builder_out->Finish());
+
+    ::arrow::dataset::FileSystemDatasetWriteOptions write_options;
+    write_options.file_write_options = parquet_file_write_options;
+    write_options.filesystem = file_system;
+    write_options.base_dir = base_dir;
+    write_options.partitioning = partitioning;
+    write_options.basename_template = "part{i}.parquet";
+    RETURN_NOT_OK(::arrow::dataset::FileSystemDataset::Write(write_options, scanner_out));
+
+    std::vector<std::string> files = {"part=a/part0.parquet", "part=b/part0.parquet",
+                                      "part=c/part0.parquet", "part=d/part0.parquet",
+                                      "part=e/part0.parquet", "part=f/part0.parquet",
+                                      "part=g/part0.parquet", "part=h/part0.parquet",
+                                      "part=i/part0.parquet", "part=j/part0.parquet"};
+    ValidateFilesExist(file_system, files);
+
+    return file_system;
+  }
+
   // Create dataset encryption properties
   std::pair<std::shared_ptr<DatasetEncryptionConfiguration>,
             std::shared_ptr<DatasetDecryptionConfiguration>>
@@ -173,37 +216,10 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
       checked_pointer_cast<ParquetFileWriteOptions>(file_format->DefaultWriteOptions());
   parquet_file_write_options->SetDatasetEncryptionConfig(dataset_encryption_config);
 
-  // Create our mock file system
-  ::arrow::fs::TimePoint mock_now = std::chrono::system_clock::now();
+  // Create file system and write dataset
   ASSERT_OK_AND_ASSIGN(auto file_system,
-                       ::arrow::fs::internal::MockFileSystem::Make(mock_now, {}));
-  // Create filesystem
-  ASSERT_OK(file_system->CreateDir(std::string(kBaseDir)));
-
-  auto partition_schema = ::arrow::schema({::arrow::field("part", ::arrow::utf8())});
-  auto partitioning =
-      std::make_shared<::arrow::dataset::HivePartitioning>(partition_schema);
-
-  // ----- Write the Dataset ----
-  auto dataset_out = BuildTable();
-  ASSERT_OK_AND_ASSIGN(auto scanner_builder_out, dataset_out->NewScan());
-  ASSERT_OK_AND_ASSIGN(auto scanner_out, scanner_builder_out->Finish());
-
-  ::arrow::dataset::FileSystemDatasetWriteOptions write_options;
-  write_options.file_write_options = parquet_file_write_options;
-  write_options.filesystem = file_system;
-  write_options.base_dir = kBaseDir;
-  write_options.partitioning = partitioning;
-  write_options.basename_template = "part{i}.parquet";
-  ASSERT_OK(::arrow::dataset::FileSystemDataset::Write(write_options, scanner_out));
-
-  std::vector<std::string> files = {"part=a/part0.parquet", "part=b/part0.parquet",
-                                    "part=c/part0.parquet", "part=d/part0.parquet",
-                                    "part=e/part0.parquet", "part=f/part0.parquet",
-                                    "part=g/part0.parquet", "part=h/part0.parquet",
-                                    "part=i/part0.parquet", "part=j/part0.parquet"};
-  ValidateFilesExist(file_system, files);
-
+                       CreateMockFileSystemAndWriteData(std::string(kBaseDir),
+                                                        parquet_file_write_options));
   // ----- Read the Dataset -----
 
   // Get FileInfo objects for all files under the base directory
@@ -212,6 +228,10 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
   selector.recursive = true;
 
   // Create a FileSystemDatasetFactory
+  auto partition_schema = ::arrow::schema({::arrow::field("part", ::arrow::utf8())});
+  auto partitioning =
+      std::make_shared<::arrow::dataset::HivePartitioning>(partition_schema);
+
   arrow::dataset::FileSystemFactoryOptions factory_options;
   factory_options.partitioning = partitioning;
   factory_options.partition_base_dir = kBaseDir;
@@ -255,30 +275,10 @@ TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
       checked_pointer_cast<ParquetFileWriteOptions>(file_write_options);
   parquet_file_write_options->SetDatasetEncryptionConfig(dataset_encryption_config);
 
-  // Create our mock file system
-  ::arrow::fs::TimePoint mock_now = std::chrono::system_clock::now();
+  // Create file system and write dataset
   ASSERT_OK_AND_ASSIGN(auto file_system,
-                       ::arrow::fs::internal::MockFileSystem::Make(mock_now, {}));
-  // Create filesystem
-  ASSERT_OK(file_system->CreateDir(std::string(kBaseDir)));
-
-  auto partition_schema = ::arrow::schema({::arrow::field("part", ::arrow::utf8())});
-  auto partitioning =
-      std::make_shared<::arrow::dataset::HivePartitioning>(partition_schema);
-
-  // ----- Write the Dataset ----
-  auto dataset_out = BuildTable();
-  ASSERT_OK_AND_ASSIGN(auto scanner_builder, dataset_out->NewScan());
-  ASSERT_OK_AND_ASSIGN(auto scanner, scanner_builder->Finish());
-
-  ::arrow::dataset::FileSystemDatasetWriteOptions write_options;
-  write_options.file_write_options = parquet_file_write_options;
-  write_options.filesystem = file_system;
-  write_options.base_dir = kBaseDir;
-  write_options.partitioning = partitioning;
-  write_options.basename_template = "part{i}.parquet";
-  ASSERT_OK(::arrow::dataset::FileSystemDataset::Write(write_options, scanner));
-
+                       CreateMockFileSystemAndWriteData(std::string(kBaseDir),
+                                                        parquet_file_write_options));
   // ----- Read Single File -----
 
   // Define the path to the encrypted Parquet file
@@ -346,29 +346,10 @@ TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
       checked_pointer_cast<ParquetFileWriteOptions>(file_write_options);
   parquet_file_write_options->SetDatasetEncryptionConfig(dataset_encryption_config);
 
-  // Create our mock file system
-  ::arrow::fs::TimePoint mock_now = std::chrono::system_clock::now();
+  // Use utility function to create file system and write dataset
   ASSERT_OK_AND_ASSIGN(auto file_system,
-                       ::arrow::fs::internal::MockFileSystem::Make(mock_now, {}));
-  // Create filesystem
-  ASSERT_OK(file_system->CreateDir(std::string(kBaseDir)));
-
-  auto partition_schema = ::arrow::schema({::arrow::field("part", ::arrow::utf8())});
-  auto partitioning =
-      std::make_shared<::arrow::dataset::HivePartitioning>(partition_schema);
-
-  // ----- Write the Dataset ----
-  auto dataset_out = BuildTable();
-  ASSERT_OK_AND_ASSIGN(auto scanner_builder, dataset_out->NewScan());
-  ASSERT_OK_AND_ASSIGN(auto scanner, scanner_builder->Finish());
-
-  ::arrow::dataset::FileSystemDatasetWriteOptions write_options;
-  write_options.file_write_options = file_write_options;
-  write_options.filesystem = file_system;
-  write_options.base_dir = kBaseDir;
-  write_options.partitioning = partitioning;
-  write_options.basename_template = "part{i}.parquet";
-  ASSERT_OK(::arrow::dataset::FileSystemDataset::Write(write_options, scanner));
+                       CreateMockFileSystemAndWriteData(std::string(kBaseDir),
+                                                        parquet_file_write_options));
 
   // ----- Read Single File -----
 
