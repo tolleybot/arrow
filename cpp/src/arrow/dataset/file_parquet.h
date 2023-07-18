@@ -57,8 +57,8 @@ struct SchemaManifest;
 namespace arrow {
 namespace dataset {
 
-struct DatasetEncryptionConfiguration;
 struct DatasetDecryptionConfiguration;
+struct DatasetEncryptionConfiguration;
 
 /// \addtogroup dataset-file-formats
 ///

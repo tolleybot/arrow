@@ -45,7 +45,7 @@ namespace dataset {
 
 class DatasetEncryptionTest : public ::testing::Test {
  protected:
-  // Create our parquetfileformat with encryption properties
+  // Create dataset encryption properties
   std::pair<std::shared_ptr<DatasetEncryptionConfiguration>,
             std::shared_ptr<DatasetDecryptionConfiguration>>
   CreateDatasetEncryptionConfig(const std::string_view* column_ids,
@@ -169,9 +169,9 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
   // update default scan options
   file_format->default_fragment_scan_options = parquet_scan_options;
   // set write options
-  auto file_write_options = file_format->DefaultWriteOptions();
-  std::shared_ptr<ParquetFileWriteOptions> parquet_file_write_options =
-      std::static_pointer_cast<ParquetFileWriteOptions>(file_write_options);
+  auto parquet_file_write_options =
+      internal::checked_pointer_cast<ParquetFileWriteOptions>(
+          file_format->DefaultWriteOptions());
   parquet_file_write_options->SetDatasetEncryptionConfig(dataset_encryption_config);
 
   // create our mock file system
@@ -232,11 +232,8 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
   ASSERT_OK_AND_ASSIGN(auto scanner_builder_in, dataset_in->NewScan());
   ASSERT_OK_AND_ASSIGN(auto scanner_in, scanner_builder_in->Finish());
 
-  // Scan the dataset and process the record batches using the callback function
-  arrow::Status status = scanner_in->Scan(visitor);
-
-  // Check if there was an error during iteration
-  ASSERT_OK(status);
+  // Scan the dataset and check if there was an error during iteration
+  ASSERT_OK(scanner_in->Scan(visitor));
 }
 
 // Write dataset to disk with encryption and then read in a single parquet file
@@ -256,7 +253,7 @@ TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
   // set write options
   auto file_write_options = file_format->DefaultWriteOptions();
   std::shared_ptr<ParquetFileWriteOptions> parquet_file_write_options =
-      std::static_pointer_cast<ParquetFileWriteOptions>(file_write_options);
+      internal::checked_pointer_cast<ParquetFileWriteOptions>(file_write_options);
   parquet_file_write_options->SetDatasetEncryptionConfig(dataset_encryption_config);
 
   // create our mock file system
@@ -328,7 +325,7 @@ TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
   // set write options
   auto file_write_options = file_format->DefaultWriteOptions();
   std::shared_ptr<ParquetFileWriteOptions> parquet_file_write_options =
-      std::static_pointer_cast<ParquetFileWriteOptions>(file_write_options);
+      internal::checked_pointer_cast<ParquetFileWriteOptions>(file_write_options);
   parquet_file_write_options->SetDatasetEncryptionConfig(dataset_encryption_config);
 
   // create our mock file system
