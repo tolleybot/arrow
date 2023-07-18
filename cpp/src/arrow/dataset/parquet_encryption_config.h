@@ -28,10 +28,6 @@ namespace dataset {
 
 /// core class, that translates the parameters of high level encryption
 struct ARROW_DS_EXPORT DatasetEncryptionConfiguration {
-  DatasetEncryptionConfiguration()
-      : kms_connection_config(
-            std::make_shared<parquet::encryption::KmsConnectionConfig>()) {}
-
   void Setup(
       std::shared_ptr<parquet::encryption::CryptoFactory> crypto_factory,
       std::shared_ptr<parquet::encryption::KmsConnectionConfig> kms_connection_config,
@@ -51,12 +47,6 @@ struct ARROW_DS_EXPORT DatasetEncryptionConfiguration {
 
 /// core class, that translates the parameters of high level encryption
 struct ARROW_DS_EXPORT DatasetDecryptionConfiguration {
-  DatasetDecryptionConfiguration()
-      : kms_connection_config(
-            std::make_shared<parquet::encryption::KmsConnectionConfig>()),
-        decryption_config(
-            std::make_shared<parquet::encryption::DecryptionConfiguration>()) {}
-
   void Setup(
       std::shared_ptr<parquet::encryption::CryptoFactory> crypto_factory,
       std::shared_ptr<parquet::encryption::KmsConnectionConfig> kms_connection_config,

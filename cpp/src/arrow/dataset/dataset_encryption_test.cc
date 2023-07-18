@@ -66,15 +66,19 @@ class DatasetEncryptionTest : public ::testing::Test {
       encryption_config->footer_key = footer_key_name;
     }
 
+    auto kms_connection_config =
+        std::make_shared<parquet::encryption::KmsConnectionConfig>();
+
     // DatasetEncryptionConfiguration
     DatasetEncryptionConfiguration dataset_encryption_config;
-    dataset_encryption_config.crypto_factory = crypto_factory;
-    dataset_encryption_config.encryption_config = encryption_config;
-
+    dataset_encryption_config.Setup(crypto_factory, kms_connection_config,
+                                    encryption_config);
     // DatasetDecryptionConfiguration
+    auto decryption_config =
+        std::make_shared<parquet::encryption::DecryptionConfiguration>();
     DatasetDecryptionConfiguration dataset_decryption_config;
-    dataset_decryption_config.crypto_factory = crypto_factory;
-
+    dataset_decryption_config.Setup(crypto_factory, kms_connection_config,
+                                    decryption_config);
     return std::make_pair(
         std::make_shared<DatasetEncryptionConfiguration>(dataset_encryption_config),
         std::make_shared<DatasetDecryptionConfiguration>(dataset_decryption_config));
