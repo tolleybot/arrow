@@ -76,11 +76,14 @@ cdef class DatasetEncryptionConfiguration(_Weakrefable):
             raise ValueError(
                 "encryption_config cannot be None")
 
-        self.c_encryption_config.reset(new CDatasetEncryptionConfiguration())
-        self.c_encryption_config.get().Setup(pyarrow_unwrap_cryptofactory(crypto_factory),
+        self.c_config.reset(new CDatasetEncryptionConfiguration())
+
+        c_encryption_config = pyarrow_unwrap_encryptionconfig(encryption_config)
+
+        self.c_config.get().Setup(pyarrow_unwrap_cryptofactory(crypto_factory),
                                   pyarrow_unwrap_kmsconnectionconfig(
                                       kms_connection_config),
-                                  pyarrow_unwrap_encryptionconfig(encryption_config))
+                                  c_encryption_config)
 
     @staticmethod
     cdef wrap(shared_ptr[CDatasetEncryptionConfiguration] c_config):
@@ -89,11 +92,11 @@ cdef class DatasetEncryptionConfiguration(_Weakrefable):
         return python_config
 
     cdef shared_ptr[CDatasetEncryptionConfiguration] unwrap(self):
-        return self.c_encryption_config
+        return self.c_config
 
 cdef class DatasetDecryptionConfiguration(_Weakrefable):
     cdef:
-        shared_ptr[CDatasetDecryptionConfiguration] c_decryption_config
+        shared_ptr[CDatasetDecryptionConfiguration] c_config
 
      # Avoid mistakingly creating attributes
     __slots__ = ()
@@ -101,15 +104,20 @@ cdef class DatasetDecryptionConfiguration(_Weakrefable):
     def __cinit__(self, object crypto_factory, object kms_connection_config,
                   object decryption_config):
 
+        cdef shared_ptr[CEncryptionConfiguration] c_decryption_config
+
         if decryption_config is None:
             raise ValueError(
                 "decryption_config cannot be None")
 
-        self.c_decryption_config.reset(new CDatasetDecryptionConfiguration())
-        self.c_decryption_config.get().Setup(pyarrow_unwrap_cryptofactory(crypto_factory),
-                                             pyarrow_unwrap_kmsconnectionconfig(
-            kms_connection_config),
-            pyarrow_unwrap_decryptionconfig(decryption_config))
+        self.c_config.reset(new CDatasetDecryptionConfiguration())
+
+        c_decryption_config = pyarrow_unwrap_decryptionconfig(decryption_config)
+
+        self.c_config.get().Setup(pyarrow_unwrap_cryptofactory(crypto_factory),
+                                  pyarrow_unwrap_kmsconnectionconfig(
+                                      kms_connection_config),
+                                  c_decryption_config)
 
     @staticmethod
     cdef wrap(shared_ptr[CDatasetDecryptionConfiguration] c_config):
@@ -118,7 +126,7 @@ cdef class DatasetDecryptionConfiguration(_Weakrefable):
         return python_config
 
     cdef shared_ptr[CDatasetDecryptionConfiguration] unwrap(self):
-        return self.c_decryption_config
+        return self.c_config
 
 cdef class ParquetFileFormat(FileFormat):
     """
