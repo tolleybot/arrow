@@ -143,7 +143,7 @@ class DatasetEncryptionTest : public ::testing::Test {
       bool wrap_locally, const std::unordered_map<std::string, std::string>& key_list) {
     auto crypto_factory = std::make_shared<::parquet::encryption::CryptoFactory>();
 
-    std::shared_ptr<::parquet::encryption::KmsClientFactory> kms_client_factory =
+    auto kms_client_factory =
         std::make_shared<::parquet::encryption::TestOnlyInMemoryKmsClientFactory>(
             wrap_locally, key_list);
 
@@ -179,7 +179,7 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
   ASSERT_OK_AND_ASSIGN(auto file_system,
                        ::arrow::fs::internal::MockFileSystem::Make(mock_now, {}));
   // create filesystem
-  ASSERT_OK(file_system->CreateDir(""));
+  ASSERT_OK(file_system->CreateDir(kBaseDir));
 
   auto mock_fs =
       std::dynamic_pointer_cast<::arrow::fs::internal::MockFileSystem>(file_system);
