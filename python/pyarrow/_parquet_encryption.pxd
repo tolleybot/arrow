@@ -133,14 +133,14 @@ cdef extern from "arrow/python/parquet_encryption.h" \
             const CDecryptionConfiguration& decryption_config)
 
 cdef extern from "arrow/dataset/parquet_encryption_config.h" namespace "arrow::dataset" nogil:
-    cdef cppclass CDatasetEncryptionConfiguration "arrow::dataset::DatasetEncryptionConfiguration":
-        CDatasetEncryptionConfiguration() except +
+    cdef cppclass CParquetEncryptionConfig "arrow::dataset::ParquetEncryptionConfig":
+        CParquetEncryptionConfig() except +
         void Setup(shared_ptr[CCryptoFactory] crypto_factory,
                    shared_ptr[CKmsConnectionConfig] kms_connection_config,
                    shared_ptr[CEncryptionConfiguration] encryption_config)
 
-    cdef cppclass CDatasetDecryptionConfiguration "arrow::dataset::DatasetDecryptionConfiguration":
-        CDatasetDecryptionConfiguration() except +
+    cdef cppclass CParquetDecryptionConfig "arrow::dataset::ParquetDecryptionConfig":
+        CParquetDecryptionConfig() except +
         void Setup(shared_ptr[CCryptoFactory] crypto_factory,
                    shared_ptr[CKmsConnectionConfig] kms_connection_config,
                    shared_ptr[CDecryptionConfiguration] decryption_config)

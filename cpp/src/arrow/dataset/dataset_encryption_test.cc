@@ -91,8 +91,8 @@ class DatasetEncryptionTest : public ::testing::Test {
   }
 
   // Create dataset encryption properties
-  std::pair<std::shared_ptr<DatasetEncryptionConfiguration>,
-            std::shared_ptr<DatasetDecryptionConfiguration>>
+  std::pair<std::shared_ptr<ParquetEncryptionConfig>,
+            std::shared_ptr<ParquetDecryptionConfig>>
   CreateDatasetEncryptionConfig(const std::string_view* column_ids,
                                 const std::string_view* column_keys, int num_columns,
                                 std::string_view footer_id, std::string_view footer_key,
@@ -114,17 +114,17 @@ class DatasetEncryptionTest : public ::testing::Test {
     auto kms_connection_config =
         std::make_shared<parquet::encryption::KmsConnectionConfig>();
 
-    DatasetEncryptionConfiguration dataset_encryption_config;
-    dataset_encryption_config.Setup(crypto_factory, kms_connection_config,
+    ParquetEncryptionConfig parquet_encryption_config;
+    parquet_encryption_config.Setup(crypto_factory, kms_connection_config,
                                     encryption_config);
     auto decryption_config =
         std::make_shared<parquet::encryption::DecryptionConfiguration>();
-    DatasetDecryptionConfiguration dataset_decryption_config;
-    dataset_decryption_config.Setup(crypto_factory, kms_connection_config,
+    ParquetDecryptionConfig parquet_decryption_config;
+    parquet_decryption_config.Setup(crypto_factory, kms_connection_config,
                                     decryption_config);
     return std::make_pair(
-        std::make_shared<DatasetEncryptionConfiguration>(dataset_encryption_config),
-        std::make_shared<DatasetDecryptionConfiguration>(dataset_decryption_config));
+        std::make_shared<ParquetEncryptionConfig>(parquet_encryption_config),
+        std::make_shared<ParquetDecryptionConfig>(parquet_decryption_config));
   }
 
   // Utility to build the key map
@@ -200,12 +200,12 @@ class DatasetEncryptionTest : public ::testing::Test {
 // Parquet file while applying distinct file encryption properties to each
 // file within the test. This is based on the selected columns.
 TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
-  auto [dataset_encryption_config, dataset_decryption_config] =
+  auto [parquet_encryption_config, parquet_decryption_config] =
       CreateDatasetEncryptionConfig(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
                                     kFooterKeyMasterKeyId, kFooterKeyMasterKey);
 
   auto parquet_scan_options = std::make_shared<ParquetFragmentScanOptions>();
-  parquet_scan_options->SetDatasetDecryptionConfig(dataset_decryption_config);
+  parquet_scan_options->SetParquetDecryptionConfig(parquet_decryption_config);
 
   // Create our Parquet file format object
   auto file_format = std::make_shared<ParquetFileFormat>();
@@ -214,7 +214,7 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
   // Set write options
   auto parquet_file_write_options =
       checked_pointer_cast<ParquetFileWriteOptions>(file_format->DefaultWriteOptions());
-  parquet_file_write_options->SetDatasetEncryptionConfig(dataset_encryption_config);
+  parquet_file_write_options->SetParquetEncryptionConfig(parquet_encryption_config);
 
   // Create file system and write dataset
   ASSERT_OK_AND_ASSIGN(auto file_system,
@@ -257,12 +257,12 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
 
 // Write dataset to disk with encryption and then read in a single parquet file
 TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
-  auto [dataset_encryption_config, dataset_decryption_config] =
+  auto [parquet_encryption_config, parquet_decryption_config] =
       CreateDatasetEncryptionConfig(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
                                     kFooterKeyMasterKeyId, kFooterKeyMasterKey);
 
   auto parquet_scan_options = std::make_shared<ParquetFragmentScanOptions>();
-  parquet_scan_options->SetDatasetDecryptionConfig(dataset_decryption_config);
+  parquet_scan_options->SetParquetDecryptionConfig(parquet_decryption_config);
 
   // Create our Parquet file format object
   auto file_format = std::make_shared<ParquetFileFormat>();
@@ -273,7 +273,7 @@ TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
   auto file_write_options = file_format->DefaultWriteOptions();
   std::shared_ptr<ParquetFileWriteOptions> parquet_file_write_options =
       checked_pointer_cast<ParquetFileWriteOptions>(file_write_options);
-  parquet_file_write_options->SetDatasetEncryptionConfig(dataset_encryption_config);
+  parquet_file_write_options->SetParquetEncryptionConfig(parquet_encryption_config);
 
   // Create file system and write dataset
   ASSERT_OK_AND_ASSIGN(auto file_system,
@@ -284,12 +284,12 @@ TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
   // Define the path to the encrypted Parquet file
   std::string file_path = "part=a/part0.parquet";
 
-  auto crypto_factory = dataset_decryption_config->crypto_factory;
+  auto crypto_factory = parquet_decryption_config->crypto_factory;
 
   // Get the FileDecryptionProperties object using the CryptoFactory object
   auto file_decryption_properties = crypto_factory->GetFileDecryptionProperties(
-      *dataset_decryption_config->kms_connection_config,
-      *dataset_decryption_config->decryption_config);
+      *parquet_decryption_config->kms_connection_config,
+      *parquet_decryption_config->decryption_config);
 
   // Create the ReaderProperties object using the FileDecryptionProperties object
   auto reader_properties = std::make_shared<parquet::ReaderProperties>();
@@ -335,7 +335,7 @@ TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
 // Verify if Parquet metadata can be read without decryption
 // properties when the footer is encrypted:
 TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
-  auto [dataset_encryption_config, dataset_decryption_config] =
+  auto [parquet_encryption_config, parquet_decryption_config] =
       CreateDatasetEncryptionConfig(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
                                     kFooterKeyMasterKeyId, kFooterKeyMasterKey);
   // Create our Parquet file format object
@@ -344,7 +344,7 @@ TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
   auto file_write_options = file_format->DefaultWriteOptions();
   std::shared_ptr<ParquetFileWriteOptions> parquet_file_write_options =
       checked_pointer_cast<ParquetFileWriteOptions>(file_write_options);
-  parquet_file_write_options->SetDatasetEncryptionConfig(dataset_encryption_config);
+  parquet_file_write_options->SetParquetEncryptionConfig(parquet_encryption_config);
 
   // Use utility function to create file system and write dataset
   ASSERT_OK_AND_ASSIGN(auto file_system,
@@ -356,12 +356,12 @@ TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
   // Define the path to the encrypted Parquet file
   std::string file_path = "part=a/part0.parquet";
 
-  auto crypto_factory = dataset_decryption_config->crypto_factory;
+  auto crypto_factory = parquet_decryption_config->crypto_factory;
 
   // Get the FileDecryptionProperties object using the CryptoFactory object
   auto file_decryption_properties = crypto_factory->GetFileDecryptionProperties(
-      *dataset_decryption_config->kms_connection_config,
-      *dataset_decryption_config->decryption_config);
+      *parquet_decryption_config->kms_connection_config,
+      *parquet_decryption_config->decryption_config);
 
   // Create the ReaderProperties object using the FileDecryptionProperties object
   auto reader_properties = std::make_shared<parquet::ReaderProperties>();

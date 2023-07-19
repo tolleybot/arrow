@@ -71,14 +71,14 @@ parquet::ReaderProperties MakeReaderProperties(
   properties.set_buffer_size(parquet_scan_options->reader_properties->buffer_size());
 
 #ifdef PARQUET_REQUIRE_ENCRYPTION
-  std::shared_ptr<DatasetDecryptionConfiguration> dataset_decrypt_config =
-      parquet_scan_options->GetDatasetDecryptionConfig();
+  std::shared_ptr<ParquetDecryptionConfig> parquet_decrypt_config =
+      parquet_scan_options->GetParquetDecryptionConfig();
 
-  if (dataset_decrypt_config != nullptr) {
+  if (parquet_decrypt_config != nullptr) {
     auto file_decryption_prop =
-        dataset_decrypt_config->crypto_factory->GetFileDecryptionProperties(
-            *dataset_decrypt_config->kms_connection_config,
-            *dataset_decrypt_config->decryption_config, path, filesystem);
+        parquet_decrypt_config->crypto_factory->GetFileDecryptionProperties(
+            *parquet_decrypt_config->kms_connection_config,
+            *parquet_decrypt_config->decryption_config, path, filesystem);
 
     parquet_scan_options->reader_properties->file_decryption_properties(
         std::move(file_decryption_prop));
@@ -643,13 +643,13 @@ Result<std::shared_ptr<FileWriter>> ParquetFileFormat::MakeWriter(
   std::unique_ptr<parquet::arrow::FileWriter> parquet_writer;
 
 #ifdef PARQUET_REQUIRE_ENCRYPTION
-  auto dataset_encrypt_config = parquet_options->GetDatasetEncryptionConfig();
+  auto parquet_encrypt_config = parquet_options->GetParquetEncryptionConfig();
 
-  if (dataset_encrypt_config != nullptr) {
+  if (parquet_encrypt_config != nullptr) {
     auto file_encryption_prop =
-        dataset_encrypt_config->crypto_factory->GetFileEncryptionProperties(
-            *dataset_encrypt_config->kms_connection_config,
-            *dataset_encrypt_config->encryption_config, destination_locator.path,
+        parquet_encrypt_config->crypto_factory->GetFileEncryptionProperties(
+            *parquet_encrypt_config->kms_connection_config,
+            *parquet_encrypt_config->encryption_config, destination_locator.path,
             destination_locator.filesystem);
 
     auto writer_properties =

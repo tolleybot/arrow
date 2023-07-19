@@ -67,9 +67,9 @@ def kms_factory(kms_connection_configuration):
 
 
 crypto_factory = pe.CryptoFactory(kms_factory)
-dataset_encryption_cfg = ds.DatasetEncryptionConfiguration(
+dataset_encryption_cfg = ds.ParquetEncryptionConfig(
     crypto_factory, kms_connection_config, encryption_config)
-dataset_decryption_cfg = ds.DatasetDecryptionConfiguration(crypto_factory,
+dataset_decryption_cfg = ds.ParquetDecryptionConfig(crypto_factory,
                                                            kms_connection_config,
                                                            decryption_config)
 
