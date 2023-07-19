@@ -83,7 +83,6 @@ def test_dataset_encryption_decryption():
     crypto_factory = pe.CryptoFactory(kms_factory)
     dataset_encryption_cfg = ds.DatasetEncryptionConfiguration(
         crypto_factory, kms_connection_config, encryption_config)
-
     dataset_decryption_cfg = ds.DatasetDecryptionConfiguration(crypto_factory,
                                                                kms_connection_config,
                                                                decryption_config)
