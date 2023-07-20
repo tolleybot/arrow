@@ -81,19 +81,19 @@ def test_dataset_encryption_decryption():
     kms_connection_config = create_kms_connection_config()
 
     crypto_factory = pe.CryptoFactory(kms_factory)
-    dataset_encryption_cfg = ds.ParquetEncryptionConfig(
+    parquet_encryption_cfg = ds.ParquetEncryptionConfig(
         crypto_factory, kms_connection_config, encryption_config)
-    dataset_decryption_cfg = ds.ParquetDecryptionConfig(crypto_factory,
+    parquet_decryption_cfg = ds.ParquetDecryptionConfig(crypto_factory,
                                                         kms_connection_config,
                                                         decryption_config)
 
     # set encryption config for parquet fragment scan options
     pq_scan_opts = ds.ParquetFragmentScanOptions(
-        dataset_decryption_config=dataset_decryption_cfg)
+        decryption_config=parquet_decryption_cfg)
     pformat = pa.dataset.ParquetFileFormat(default_fragment_scan_options=pq_scan_opts)
     # create write_options with dataset encryption config
     write_options = pformat.make_write_options(
-        dataset_encryption_config=dataset_encryption_cfg)
+        encryption_config=parquet_encryption_cfg)
 
     mockfs = fs._MockFileSystem()
     mockfs.create_dir('/')
