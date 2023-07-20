@@ -229,7 +229,7 @@ class ARROW_DS_EXPORT ParquetFragmentScanOptions : public FragmentScanOptions {
   /// ScanOptions. Additionally, dictionary columns come from
   /// ParquetFileFormat::ReaderOptions::dict_columns.
   std::shared_ptr<parquet::ArrowReaderProperties> arrow_reader_properties;
-  /// \brief A getter function to retrieve the dataset decryption configuration
+  /// \brief A getter function to retrieve the parquet decryption configuration
   std::shared_ptr<ParquetDecryptionConfig> GetParquetDecryptionConfig() const {
     return parquet_decryption_config_;
   }
