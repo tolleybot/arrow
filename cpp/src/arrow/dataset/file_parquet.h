@@ -235,8 +235,8 @@ class ARROW_DS_EXPORT ParquetFragmentScanOptions : public FragmentScanOptions {
   }
   /// \brief A setter for ParquetDecryptionConfig
   void SetParquetDecryptionConfig(
-      std::shared_ptr<ParquetDecryptionConfig> dataset_decryption_config) {
-    parquet_decryption_config_ = std::move(dataset_decryption_config);
+      std::shared_ptr<ParquetDecryptionConfig> parquet_decryption_config) {
+    parquet_decryption_config_ = std::move(parquet_decryption_config);
   }
 
  private:
