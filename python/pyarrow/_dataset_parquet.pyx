@@ -759,10 +759,10 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
         return self.parquet_options.arrow_reader_properties.get()
 
     @property
-    def dataset_decryption_config(self):
-        return self._dataset_decryption_config
+    def parquet_decryption_config(self):
+        return self._parquet_decryption_config
 
-    @dataset_decryption_config.setter
+    @parquet_decryption_config.setter
     def dataset_decryption_config(self, ParquetDecryptionConfig config):
         self.SetParquetDecryptionConfig(config)
 
