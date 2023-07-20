@@ -84,8 +84,8 @@ def test_dataset_encryption_decryption():
     dataset_encryption_cfg = ds.ParquetEncryptionConfig(
         crypto_factory, kms_connection_config, encryption_config)
     dataset_decryption_cfg = ds.ParquetDecryptionConfig(crypto_factory,
-                                                               kms_connection_config,
-                                                               decryption_config)
+                                                        kms_connection_config,
+                                                        decryption_config)
 
     # set encryption config for parquet fragment scan options
     pq_scan_opts = ds.ParquetFragmentScanOptions(

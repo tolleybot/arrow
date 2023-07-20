@@ -24,7 +24,7 @@ from datetime import timedelta
 import shutil
 import os
 
-""" A sample to demostrate dataset encryption and decryption"""
+""" A sample to demonstrate parquet dataset encryption and decryption"""
 
 # create a list of dictionaries that will represent our dataset
 table = pa.table({'year': [2020, 2022, 2021, 2022, 2019, 2021],
@@ -70,8 +70,8 @@ crypto_factory = pe.CryptoFactory(kms_factory)
 dataset_encryption_cfg = ds.ParquetEncryptionConfig(
     crypto_factory, kms_connection_config, encryption_config)
 dataset_decryption_cfg = ds.ParquetDecryptionConfig(crypto_factory,
-                                                           kms_connection_config,
-                                                           decryption_config)
+                                                    kms_connection_config,
+                                                    decryption_config)
 
 # set encryption config for parquet fragment scan options
 pq_scan_opts = ds.ParquetFragmentScanOptions()

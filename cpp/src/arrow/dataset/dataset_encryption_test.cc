@@ -93,7 +93,7 @@ class DatasetEncryptionTest : public ::testing::Test {
   // Create dataset encryption properties
   std::pair<std::shared_ptr<ParquetEncryptionConfig>,
             std::shared_ptr<ParquetDecryptionConfig>>
-  CreateDatasetEncryptionConfig(const std::string_view* column_ids,
+  CreateParquetEncryptionConfig(const std::string_view* column_ids,
                                 const std::string_view* column_keys, int num_columns,
                                 std::string_view footer_id, std::string_view footer_key,
                                 std::string_view footer_key_name = "footer_key",
@@ -201,7 +201,7 @@ class DatasetEncryptionTest : public ::testing::Test {
 // file within the test. This is based on the selected columns.
 TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
   auto [parquet_encryption_config, parquet_decryption_config] =
-      CreateDatasetEncryptionConfig(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
+      CreateParquetEncryptionConfig(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
                                     kFooterKeyMasterKeyId, kFooterKeyMasterKey);
 
   auto parquet_scan_options = std::make_shared<ParquetFragmentScanOptions>();
@@ -258,7 +258,7 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
 // Write dataset to disk with encryption and then read in a single parquet file
 TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
   auto [parquet_encryption_config, parquet_decryption_config] =
-      CreateDatasetEncryptionConfig(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
+      CreateParquetEncryptionConfig(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
                                     kFooterKeyMasterKeyId, kFooterKeyMasterKey);
 
   auto parquet_scan_options = std::make_shared<ParquetFragmentScanOptions>();
@@ -336,7 +336,7 @@ TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
 // properties when the footer is encrypted:
 TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
   auto [parquet_encryption_config, parquet_decryption_config] =
-      CreateDatasetEncryptionConfig(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
+      CreateParquetEncryptionConfig(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
                                     kFooterKeyMasterKeyId, kFooterKeyMasterKey);
   // Create our Parquet file format object
   auto file_format = std::make_shared<ParquetFileFormat>();
