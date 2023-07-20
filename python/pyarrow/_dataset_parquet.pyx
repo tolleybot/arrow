@@ -717,14 +717,14 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
         If not None, override the maximum total size of containers allocated
         when decoding Thrift structures. The default limit should be
         sufficient for most Parquet files.
-    dataset_decryption_config : ParquetDecryptionConfig, default None
+    decryption_config : ParquetDecryptionConfig, default None
         If not None, use the provided ParquetDecryptionConfig to decrypt the
         Parquet file.
     """
 
     cdef:
         CParquetFragmentScanOptions* parquet_options
-        ParquetDecryptionConfig _dataset_decryption_config
+        ParquetDecryptionConfig _parquet_decryption_config
 
     # Avoid mistakingly creating attributes
     __slots__ = ()
@@ -829,7 +829,7 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
         cdef shared_ptr[CParquetDecryptionConfig] c_config
         if not isinstance(config, ParquetDecryptionConfig):
             raise ValueError("config must be a ParquetDecryptionConfig")
-        self._dataset_decryption_config = config
+        self._parquet_decryption_config = config
         c_config = config.unwrap()
         self.parquet_options.SetParquetDecryptionConfig(c_config)
 
