@@ -32,7 +32,7 @@ cdef extern from "arrow/dataset/api.h" namespace "arrow::dataset" nogil:
         shared_ptr[WriterProperties] writer_properties
         shared_ptr[ArrowWriterProperties] arrow_writer_properties
         shared_ptr[CParquetEncryptionConfig] GetParquetEncryptionConfig()
-        void SetParquetEncryptionConfig(shared_ptr[CParquetEncryptionConfig] dataset_encryption_config)
+        void SetParquetEncryptionConfig(shared_ptr[CParquetEncryptionConfig] parquet_encryption_config)
 
     cdef cppclass CParquetFileFragment "arrow::dataset::ParquetFileFragment"(
             CFileFragment):
