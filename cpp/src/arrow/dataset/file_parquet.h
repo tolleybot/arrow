@@ -258,8 +258,8 @@ class ARROW_DS_EXPORT ParquetFileWriteOptions : public FileWriteOptions {
   }
   /// \brief A setter for ParquetEncryptionConfig
   void SetParquetEncryptionConfig(
-      std::shared_ptr<ParquetEncryptionConfig> dataset_encryption_config) {
-    parquet_encryption_config_ = std::move(dataset_encryption_config);
+      std::shared_ptr<ParquetEncryptionConfig> parquet_encryption_config) {
+    parquet_encryption_config_ = std::move(parquet_encryption_config);
   }
 
  protected:
