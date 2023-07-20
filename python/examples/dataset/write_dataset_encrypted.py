@@ -24,7 +24,7 @@ from datetime import timedelta
 import shutil
 import os
 
-""" A sample to demostrate dataset encryption and decryption"""
+""" A sample to demonstrate parquet dataset encryption and decryption"""
 
 # create a list of dictionaries that will represent our dataset
 table = pa.table({'year': [2020, 2022, 2021, 2022, 2019, 2021],
