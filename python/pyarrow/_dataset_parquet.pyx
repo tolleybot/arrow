@@ -636,8 +636,8 @@ cdef class ParquetFileWriteOptions(FileWriteOptions):
         )
 
         cdef shared_ptr[CParquetEncryptionConfig] c_config
-        if self._properties["dataset_encryption_config"]:
-            config = self._properties["dataset_encryption_config"]
+        if self._properties["encryption_config"]:
+            config = self._properties["encryption_config"]
             if not isinstance(config, ParquetEncryptionConfig):
                 raise ValueError("config must be a ParquetEncryptionConfig")
             c_config = (<ParquetEncryptionConfig>config).unwrap()
@@ -677,7 +677,7 @@ cdef class ParquetFileWriteOptions(FileWriteOptions):
             coerce_timestamps=None,
             allow_truncated_timestamps=False,
             use_compliant_nested_type=True,
-            dataset_encryption_config=None,
+            encryption_config=None,
         )
         self._set_properties()
         self._set_arrow_properties()
@@ -734,7 +734,7 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
                  bint pre_buffer=False,
                  thrift_string_size_limit=None,
                  thrift_container_size_limit=None,
-                 dataset_decryption_config=None):
+                 decryption_config=None):
         self.init(shared_ptr[CFragmentScanOptions](
             new CParquetFragmentScanOptions()))
         self.use_buffered_stream = use_buffered_stream
@@ -745,8 +745,8 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
         if thrift_container_size_limit is not None:
             self.thrift_container_size_limit = thrift_container_size_limit
 
-        if parquet_decryption_config:
-            self.SetParquetDecryptionConfig(parquet_decryption_config)
+        if decryption_config:
+            self.SetParquetDecryptionConfig(decryption_config)
 
     cdef void init(self, const shared_ptr[CFragmentScanOptions]& sp):
         FragmentScanOptions.init(self, sp)
@@ -763,7 +763,7 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
         return self._parquet_decryption_config
 
     @parquet_decryption_config.setter
-    def dataset_decryption_config(self, ParquetDecryptionConfig config):
+    def parquet_decryption_config(self, ParquetDecryptionConfig config):
         self.SetParquetDecryptionConfig(config)
 
     @property

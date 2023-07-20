@@ -82,7 +82,7 @@ if os.path.exists('sample_dataset'):
     shutil.rmtree('sample_dataset')
 
 write_options = pformat.make_write_options(
-    dataset_encryption_config=dataset_encryption_cfg)
+    encryption_config=dataset_encryption_cfg)
 
 ds.write_dataset(data=dataset, base_dir="sample_dataset",
                  partitioning=['year'], format=pformat, file_options=write_options)
