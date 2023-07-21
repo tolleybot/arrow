@@ -67,22 +67,22 @@ def kms_factory(kms_connection_configuration):
 
 
 crypto_factory = pe.CryptoFactory(kms_factory)
-dataset_encryption_cfg = ds.ParquetEncryptionConfig(
+parquet_encryption_cfg = ds.ParquetEncryptionConfig(
     crypto_factory, kms_connection_config, encryption_config)
-dataset_decryption_cfg = ds.ParquetDecryptionConfig(crypto_factory,
+parquet_decryption_cfg = ds.ParquetDecryptionConfig(crypto_factory,
                                                     kms_connection_config,
                                                     decryption_config)
 
 # set encryption config for parquet fragment scan options
 pq_scan_opts = ds.ParquetFragmentScanOptions()
-pq_scan_opts.dataset_decryption_config = dataset_decryption_cfg
+pq_scan_opts.decryption_config = parquet_decryption_cfg
 pformat = pa.dataset.ParquetFileFormat(default_fragment_scan_options=pq_scan_opts)
 
 if os.path.exists('sample_dataset'):
     shutil.rmtree('sample_dataset')
 
 write_options = pformat.make_write_options(
-    encryption_config=dataset_encryption_cfg)
+    encryption_config=parquet_encryption_cfg)
 
 ds.write_dataset(data=dataset, base_dir="sample_dataset",
                  partitioning=['year'], format=pformat, file_options=write_options)
