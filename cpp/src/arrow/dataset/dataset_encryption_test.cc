@@ -195,10 +195,12 @@ class DatasetEncryptionTest : public ::testing::Test {
     return crypto_factory;
   }
 };
-// Write dataset to disk with encryption
-// The aim of this test is to demonstrate the process of writing a partitioned
-// Parquet file while applying distinct file encryption properties to each
-// file within the test. This is based on the selected columns.
+
+// This test demonstrates the process of writing a partitioned Parquet file with the same
+// encryption properties applied to each file within the dataset. The encryption
+// properties are determined based on the selected columns. After writing the dataset, the
+// test reads the data back and verifies that it can be successfully decrypted and
+// scanned.
 TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
   auto [parquet_encryption_config, parquet_decryption_config] =
       CreateParquetEncryptionConfig(kColumnMasterKeysIds, kColumnMasterKeys, kNumColumns,
