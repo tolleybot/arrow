@@ -100,8 +100,8 @@ class DatasetEncryptionTest : public ::testing::Test {
     auto file_format = std::make_shared<ParquetFileFormat>();
     auto parquet_file_write_options =
         checked_pointer_cast<ParquetFileWriteOptions>(file_format->DefaultWriteOptions());
-    parquet_file_write_options->SetParquetEncryptionConfig(
-        std::move(parquet_encryption_config));
+    parquet_file_write_options->parquet_encryption_config =
+        std::move(parquet_encryption_config);
 
     // Write dataset.
     auto dataset = std::make_shared<InMemoryDataset>(table);
@@ -152,7 +152,7 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
 
   // Set scan options.
   auto parquet_scan_options = std::make_shared<ParquetFragmentScanOptions>();
-  parquet_scan_options->SetParquetDecryptionConfig(std::move(parquet_decryption_config));
+  parquet_scan_options->parquet_decryption_config = parquet_decryption_config;
 
   auto file_format = std::make_shared<ParquetFileFormat>();
   file_format->default_fragment_scan_options = std::move(parquet_scan_options);

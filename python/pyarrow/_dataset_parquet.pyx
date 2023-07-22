@@ -641,7 +641,7 @@ cdef class ParquetFileWriteOptions(FileWriteOptions):
             if not isinstance(config, ParquetEncryptionConfig):
                 raise ValueError("config must be a ParquetEncryptionConfig")
             c_config = (<ParquetEncryptionConfig>config).unwrap()
-            opts.SetParquetEncryptionConfig(c_config)
+            opts.parquet_encryption_config = c_config
 
     def _set_arrow_properties(self):
         cdef CParquetFileWriteOptions* opts = self.parquet_options
@@ -831,7 +831,7 @@ cdef class ParquetFragmentScanOptions(FragmentScanOptions):
             raise ValueError("config must be a ParquetDecryptionConfig")
         self._parquet_decryption_config = config
         c_config = config.unwrap()
-        self.parquet_options.SetParquetDecryptionConfig(c_config)
+        self.parquet_options.parquet_decryption_config = c_config
 
     @classmethod
     def _reconstruct(cls, kwargs):
