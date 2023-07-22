@@ -71,8 +71,7 @@ parquet::ReaderProperties MakeReaderProperties(
   properties.set_buffer_size(parquet_scan_options->reader_properties->buffer_size());
 
 #ifdef PARQUET_REQUIRE_ENCRYPTION
-  std::shared_ptr<ParquetDecryptionConfig> parquet_decrypt_config =
-      parquet_scan_options->GetParquetDecryptionConfig();
+  auto parquet_decrypt_config = parquet_scan_options->parquet_decryption_config;
 
   if (parquet_decrypt_config != nullptr) {
     auto file_decryption_prop =
@@ -643,7 +642,7 @@ Result<std::shared_ptr<FileWriter>> ParquetFileFormat::MakeWriter(
   std::unique_ptr<parquet::arrow::FileWriter> parquet_writer;
 
 #ifdef PARQUET_REQUIRE_ENCRYPTION
-  auto parquet_encrypt_config = parquet_options->GetParquetEncryptionConfig();
+  auto parquet_encrypt_config = parquet_options->parquet_encryption_config;
 
   if (parquet_encrypt_config != nullptr) {
     auto file_encryption_prop =

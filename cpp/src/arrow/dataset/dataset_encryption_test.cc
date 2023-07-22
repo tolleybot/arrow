@@ -207,7 +207,7 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
                                     kFooterKeyMasterKeyId, kFooterKeyMasterKey);
 
   auto parquet_scan_options = std::make_shared<ParquetFragmentScanOptions>();
-  parquet_scan_options->SetParquetDecryptionConfig(parquet_decryption_config);
+  parquet_scan_options->parquet_decryption_config = parquet_decryption_config;
 
   // Create our Parquet file format object
   auto file_format = std::make_shared<ParquetFileFormat>();
@@ -216,7 +216,7 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
   // Set write options
   auto parquet_file_write_options =
       checked_pointer_cast<ParquetFileWriteOptions>(file_format->DefaultWriteOptions());
-  parquet_file_write_options->SetParquetEncryptionConfig(parquet_encryption_config);
+  parquet_file_write_options->parquet_encryption_config = parquet_encryption_config;
 
   // Create file system and write dataset
   ASSERT_OK_AND_ASSIGN(auto file_system,
@@ -264,7 +264,7 @@ TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
                                     kFooterKeyMasterKeyId, kFooterKeyMasterKey);
 
   auto parquet_scan_options = std::make_shared<ParquetFragmentScanOptions>();
-  parquet_scan_options->SetParquetDecryptionConfig(parquet_decryption_config);
+  parquet_scan_options->parquet_decryption_config = parquet_decryption_config;
 
   // Create our Parquet file format object
   auto file_format = std::make_shared<ParquetFileFormat>();
@@ -275,7 +275,7 @@ TEST_F(DatasetEncryptionTest, WriteReadSingleFile) {
   auto file_write_options = file_format->DefaultWriteOptions();
   std::shared_ptr<ParquetFileWriteOptions> parquet_file_write_options =
       checked_pointer_cast<ParquetFileWriteOptions>(file_write_options);
-  parquet_file_write_options->SetParquetEncryptionConfig(parquet_encryption_config);
+  parquet_file_write_options->parquet_encryption_config = parquet_encryption_config;
 
   // Create file system and write dataset
   ASSERT_OK_AND_ASSIGN(auto file_system,
@@ -346,7 +346,7 @@ TEST_F(DatasetEncryptionTest, CannotReadMetadataWithEncryptedFooter) {
   auto file_write_options = file_format->DefaultWriteOptions();
   std::shared_ptr<ParquetFileWriteOptions> parquet_file_write_options =
       checked_pointer_cast<ParquetFileWriteOptions>(file_write_options);
-  parquet_file_write_options->SetParquetEncryptionConfig(parquet_encryption_config);
+  parquet_file_write_options->parquet_encryption_config = parquet_encryption_config;
 
   // Use utility function to create file system and write dataset
   ASSERT_OK_AND_ASSIGN(auto file_system,

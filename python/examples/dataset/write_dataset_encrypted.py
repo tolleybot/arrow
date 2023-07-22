@@ -75,7 +75,7 @@ parquet_decryption_cfg = ds.ParquetDecryptionConfig(crypto_factory,
 
 # set encryption config for parquet fragment scan options
 pq_scan_opts = ds.ParquetFragmentScanOptions()
-pq_scan_opts.decryption_config = parquet_decryption_cfg
+pq_scan_opts.parquet_decryption_config = parquet_decryption_cfg
 pformat = pa.dataset.ParquetFileFormat(default_fragment_scan_options=pq_scan_opts)
 
 if os.path.exists('sample_dataset'):
