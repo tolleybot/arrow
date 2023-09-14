@@ -241,7 +241,7 @@ class ARROW_DS_EXPORT ParquetFileWriteOptions : public FileWriteOptions {
   /// \brief Parquet Arrow writer properties.
   std::shared_ptr<parquet::ArrowWriterProperties> arrow_writer_properties;
 
-  // A configuration structure that provides per file encryption properties for a dataset
+  // A configuration structure that provides encryption properties for a dataset
   std::shared_ptr<ParquetEncryptionConfig> parquet_encryption_config = NULLPTR;
 
  protected:

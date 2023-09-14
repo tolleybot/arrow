@@ -15,14 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import shutil
+import os
+from datetime import timedelta
 
 import pyarrow as pa
 import pyarrow.dataset as ds
 import pyarrow.parquet.encryption as pe
 from pyarrow.tests.parquet.encryption import InMemoryKmsClient
-from datetime import timedelta
-import shutil
-import os
 
 """ A sample to demonstrate parquet dataset encryption and decryption"""
 

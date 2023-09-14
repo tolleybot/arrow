@@ -35,7 +35,7 @@ constexpr std::string_view kFooterKeyMasterKey = "0123456789012345";
 constexpr std::string_view kFooterKeyMasterKeyId = "footer_key";
 constexpr std::string_view kFooterKeyName = "footer_key";
 constexpr std::string_view kColumnMasterKey = "1234567890123450";
-constexpr std::string_view kColumnMasterKeysId = "col_key";
+constexpr std::string_view kColumnMasterKeyId = "col_key";
 constexpr std::string_view kColumnKeyMapping = "col_key: a";
 constexpr std::string_view kBaseDir = "";
 
@@ -78,7 +78,7 @@ class DatasetEncryptionTest : public ::testing::Test {
 
     // Prepare encryption properties.
     std::unordered_map<std::string, std::string> key_map;
-    key_map.emplace(kColumnMasterKeysId, kColumnMasterKey);
+    key_map.emplace(kColumnMasterKeyId, kColumnMasterKey);
     key_map.emplace(kFooterKeyMasterKeyId, kFooterKeyMasterKey);
 
     crypto_factory = std::make_shared<parquet::encryption::CryptoFactory>();
@@ -177,6 +177,8 @@ TEST_F(DatasetEncryptionTest, WriteReadDatasetWithEncryption) {
 
   // Verify the data was read correctly
   ASSERT_OK_AND_ASSIGN(auto combined_table, read_table->CombineChunks());
+  // Validate the table
+  ASSERT_OK(combined_table->ValidateFull());
   AssertTablesEqual(*combined_table, *table);
 }
 

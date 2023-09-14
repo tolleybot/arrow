@@ -77,7 +77,9 @@ IF PARQUET_ENCRYPTION_ENABLED:
         kms_connection_config : KmsConnectionConfig
             Configuration for connecting to Key Management Service.
         encryption_config : EncryptionConfiguration
-            Configuration for encryption settings.
+            :ref:`Configure <encryption-configuration>`_ e.g. which columns to encrypt,
+            length of encryption keys, Parquet Encryption Algorithm
+            and more.
 
         Raises
         ------
