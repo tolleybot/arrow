@@ -57,7 +57,7 @@ class DatasetEncryptionTest : public ::testing::Test {
   static void SetUpTestSuite() {
     // Creates a mock file system using the current time point.
     EXPECT_OK_AND_ASSIGN(file_system_, fs::internal::MockFileSystem::Make(
-                                          std::chrono::system_clock::now(), {}));
+                                           std::chrono::system_clock::now(), {}));
     ASSERT_OK(file_system_->CreateDir(std::string(kBaseDir)));
 
     // Prepare table data.
