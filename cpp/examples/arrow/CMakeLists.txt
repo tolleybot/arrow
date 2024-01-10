@@ -145,6 +145,11 @@ if(ARROW_PARQUET AND ARROW_DATASET)
     set(DATASET_EXAMPLES_LINK_LIBS arrow_dataset_static)
   endif()
 
+  # TODO: DON remove
+  add_arrow_example(encryption_test EXTRA_LINK_LIBS
+                    ${DATASET_EXAMPLES_LINK_LIBS})
+
+
   add_arrow_example(dataset_parquet_scan_example EXTRA_LINK_LIBS
                     ${DATASET_EXAMPLES_LINK_LIBS})
   add_dependencies(dataset-parquet-scan-example parquet)

@@ -78,16 +78,18 @@ parquet::ReaderProperties MakeReaderProperties(
 
 #ifdef PARQUET_REQUIRE_ENCRYPTION
   auto parquet_decrypt_config = parquet_scan_options->parquet_decryption_config;
-
+ 
   if (parquet_decrypt_config != nullptr) {
     auto file_decryption_prop =
         parquet_decrypt_config->crypto_factory->GetFileDecryptionProperties(
             *parquet_decrypt_config->kms_connection_config,
             *parquet_decrypt_config->decryption_config, path, filesystem);
-
+   #if 1
     parquet_scan_options->reader_properties->file_decryption_properties(
         std::move(file_decryption_prop));
+      #endif
   }
+
 #else
   if (parquet_scan_options->parquet_decryption_config != nullptr) {
     parquet::ParquetException::NYI("Encryption is not supported in this build.");

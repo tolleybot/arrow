@@ -46,6 +46,7 @@
 #include "parquet/metadata.h"
 #include "parquet/properties.h"
 #include "parquet/schema.h"
+#include <iostream>
 
 using arrow::Array;
 using arrow::ArrayData;
@@ -265,6 +266,9 @@ class FileReaderImpl : public FileReader {
     // TODO(wesm): This calculation doesn't make much sense when we have repeated
     // schema nodes
     int64_t records_to_read = 0;
+    int num_row_groups = reader_->metadata()->num_row_groups();
+    int num_columns = reader_->metadata()->num_columns();
+    std::cout << num_row_groups << " " << num_columns << std::endl;
     for (auto row_group : row_groups) {
       // Can throw exception
       records_to_read +=
@@ -1234,6 +1238,68 @@ Status FileReaderImpl::ReadRowGroups(const std::vector<int>& row_groups,
   return Status::OK();
 }
 
+#if 0
+// TODO: DON
+::arrow::Result<std::shared_ptr<Table>> MakeTable(
+    const std::shared_ptr<::arrow::Schema>& result_schema,
+    const std::vector<int>& row_groups,
+    const ::arrow::ChunkedArrayVector& columns,
+    std::shared_ptr<FileReaderImpl> self)
+{
+    int64_t num_rows = 0;
+    if (!columns.empty()) {
+        num_rows = columns[0]->length();
+    } else {
+        for (int i : row_groups) {
+            num_rows += self->parquet_reader()->metadata()->RowGroup(i)->num_rows();
+        }
+    }
+    auto table = Table::Make(std::move(result_schema), columns, num_rows);
+    RETURN_NOT_OK(table->Validate());
+    return table;
+}
+
+::arrow::Result<std::shared_ptr<::arrow::ChunkedArray>> ReadColumnWrapper(
+    size_t i,
+    const std::vector<int>& row_groups,
+    std::shared_ptr<ColumnReaderImpl> reader,
+    std::shared_ptr<FileReaderImpl> self)
+{
+    std::shared_ptr<::arrow::ChunkedArray> column;
+    RETURN_NOT_OK(self->ReadColumn(static_cast<int>(i), row_groups, reader.get(), &column));
+    return column;
+}
+
+
+Future<std::shared_ptr<Table>> FileReaderImpl::DecodeRowGroups(
+    std::shared_ptr<FileReaderImpl> self, 
+    const std::vector<int>& row_groups,
+    const std::vector<int>& column_indices, 
+    ::arrow::internal::Executor* cpu_executor) 
+{
+  std::vector<std::shared_ptr<ColumnReaderImpl>> readers;
+    std::shared_ptr<::arrow::Schema> result_schema;
+    RETURN_NOT_OK(GetFieldReaders(column_indices, row_groups, &readers, &result_schema));
+    // OptionalParallelForAsync requires an executor
+    if (!cpu_executor) cpu_executor = ::arrow::internal::GetCpuThreadPool();
+
+    std::cout << "Initial row_groups size: " << row_groups.size();
+    for (const auto& group : row_groups) {
+        std::cout << "Row group: " << group << std::endl;
+    }
+
+    return ::arrow::internal::OptionalParallelForAsync(
+        reader_properties_.use_threads(),
+        std::move(readers),
+        [row_groups, self](size_t i, std::shared_ptr<ColumnReaderImpl> reader) {
+            return ReadColumnWrapper(i, row_groups, reader, self);
+        },
+        cpu_executor)
+    .Then([result_schema, row_groups, self](const ::arrow::ChunkedArrayVector& columns) {
+        return MakeTable(result_schema, row_groups, columns, self);
+    });
+}
+#else
 Future<std::shared_ptr<Table>> FileReaderImpl::DecodeRowGroups(
     std::shared_ptr<FileReaderImpl> self, const std::vector<int>& row_groups,
     const std::vector<int>& column_indices, ::arrow::internal::Executor* cpu_executor) {
@@ -1244,6 +1310,12 @@ Future<std::shared_ptr<Table>> FileReaderImpl::DecodeRowGroups(
   RETURN_NOT_OK(GetFieldReaders(column_indices, row_groups, &readers, &result_schema));
   // OptionalParallelForAsync requires an executor
   if (!cpu_executor) cpu_executor = ::arrow::internal::GetCpuThreadPool();
+
+  std::cout << "Initial row_groups size: " << row_groups.size();
+  for (const auto& group : row_groups) {
+      std::cout << "Row group: " << group << std::endl;
+  }
+
 
   auto read_column = [row_groups, self, this](size_t i,
                                               std::shared_ptr<ColumnReaderImpl> reader)
@@ -1272,6 +1344,7 @@ Future<std::shared_ptr<Table>> FileReaderImpl::DecodeRowGroups(
                                                      cpu_executor)
       .Then(std::move(make_table));
 }
+#endif
 
 std::shared_ptr<RowGroupReader> FileReaderImpl::RowGroup(int row_group_index) {
   return std::make_shared<RowGroupReaderImpl>(this, row_group_index);

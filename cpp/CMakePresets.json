@@ -23,7 +23,10 @@
         "ARROW_BUILD_INTEGRATION": "ON",
         "ARROW_BUILD_TESTS": "ON",
         "ARROW_EXTRA_ERROR_CONTEXT": "ON",
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PYTHON_EXECUTABLE": "/opt/homebrew/bin/python3.11",
+        "PYTHON_INCLUDE_DIR": "/opt/homebrew/Cellar/python@3.11/3.11.6_1/Frameworks/Python.framework/Versions/3.11/include/python3.11",
+        "PYTHON_LIBRARY": "/opt/homebrew/Cellar/python@3.11/3.11.6_1/Frameworks/Python.framework/Versions/3.11/lib/libpython3.11.dylib"
       }
     },
     {
