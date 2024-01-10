@@ -12,8 +12,11 @@
 #include <parquet/encryption/encryption_internal.h>
 #include <parquet/encryption/kms_client.h>
 #include <cmath>
+#include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <string_view>
 
@@ -24,7 +27,8 @@ using namespace parquet::encryption;
 constexpr std::string_view kFooterKeyName = "footer_key";
 constexpr std::string_view kColumnKeyMapping = "col_key: foo";
 constexpr std::string_view kBaseDir = "/Users/dtolley/Documents/temp";
-#define ROW_COUNT 100
+// #define ROW_COUNT 100
+// #define ROW_COUNT std::pow(2, 15) + 1 + 1
 
 class NoOpKmsClient : public parquet::encryption::KmsClient {
  public:
@@ -54,9 +58,7 @@ class NoOpKmsClientFactory : public parquet::encryption::KmsClientFactory {
   }
 };
 
-void CreateRandomTable(std::shared_ptr<arrow::Table>& table) {
-  int64_t row_count = ROW_COUNT;
-
+void CreateRandomTable(std::shared_ptr<arrow::Table>& table, int64_t row_count) {
   // Using a FloatBuilder to create the array
   arrow::FloatBuilder float_builder;
   arrow::Status status;
@@ -86,11 +88,31 @@ void CreateRandomTable(std::shared_ptr<arrow::Table>& table) {
 }
 
 int main() {
+  std::ifstream file("config.txt");  // Fix the instantiation of the ifstream object
+
+  if (!file) {
+    std::cerr << "Unable to open file config.txt";
+    return 1;  // call system to stop
+  }
+
+  int ROW_COUNT;
+  file >> ROW_COUNT;
+  int NUM_THREADS;
+  file >> NUM_THREADS;
+  file.close();
+
+  std::string num_threads_str = std::to_string(NUM_THREADS);
+  setenv("OMP_NUM_THREADS", num_threads_str.c_str(), 1);
+
+  std::cout << "Max value of short int: " << std::numeric_limits<short int>::max()
+            << std::endl;
+  std::cout << "ROW_COUNT: " << ROW_COUNT << std::endl;
+  std::cout << "NUM_THREADS: " << NUM_THREADS << std::endl;
   try {
     auto file_system = std::make_shared<fs::LocalFileSystem>();
 
     std::shared_ptr<Table> table;
-    CreateRandomTable(table);
+    CreateRandomTable(table, ROW_COUNT);
 
     auto crypto_factory = std::make_shared<CryptoFactory>();
     auto kms_client_factory = std::make_shared<NoOpKmsClientFactory>();
