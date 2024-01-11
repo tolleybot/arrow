@@ -1,0 +1,63 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Attach (C++ Debug)",
+            "type": "cppdbg",
+            "request": "attach",
+            "program": "/opt/homebrew/bin/python3.11",
+            "processId": "${command:pickProcess}",
+            "MIMode": "lldb"
+        },
+        {
+            "name": "Python C++ Debugger",
+            "type": "pythoncpp",
+            "request": "launch",
+            "pythonLaunchName": "Python: Current File",
+            "cppAttachName": "Attach (C++ Debug)",
+        },
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "/Users/dtolley/Documents/Projects/arrow/cpp/test.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug C++ Test",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/out/build/ninja-debug-python-minimal/debug/arrow-dataset-file-parquet-encryption-test2", // Update this
+            "args": [], // Any arguments your test executable needs
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb",
+            "preLaunchTask": "", // Name of a task to run before debugging, if needed
+        },
+        {
+            "name": "Encryption",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/out/build/ninja-debug-python-minimal/debug/encryption-test", // Update this
+            "args": [], // Any arguments your test executable needs
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/out/build/ninja-debug-python-minimal/debug/",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb",
+            "preLaunchTask": "", // Name of a task to run before debugging, if needed
+            "setupCommands": [
+                {
+                    "description": "Enable break on all exceptions",
+                    "text": "-break-exceptions",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,49 @@
+{
+	"files": [
+		{
+			"path": "src/parquet/arrow/reader.cc",
+			"bookmarks": [
+				{
+					"line": 277,
+					"column": 31,
+					"label": "can throw exception note"
+				},
+				{
+					"line": 1313,
+					"column": 5,
+					"label": "decoderowgroups"
+				}
+			]
+		},
+		{
+			"path": "src/parquet/column_scanner.h",
+			"bookmarks": [
+				{
+					"line": 40,
+					"column": 8,
+					"label": "Scanner"
+				}
+			]
+		},
+		{
+			"path": "src/arrow/dataset/file_parquet.cc",
+			"bookmarks": [
+				{
+					"line": 79,
+					"column": 12,
+					"label": "encryption point"
+				}
+			]
+		},
+		{
+			"path": "src/parquet/file_reader.cc",
+			"bookmarks": [
+				{
+					"line": 272,
+					"column": 52,
+					"label": "Row group limit of 32767"
+				}
+			]
+		}
+	]
+}
