@@ -127,6 +127,8 @@ int main() {
     parquet_encryption_config->kms_connection_config = kms_connection_config;
     parquet_encryption_config->encryption_config = std::move(encryption_config);
 
+    // setenv("OMP_NUM_THREADS", "1", 1);
+
     // Writing dataset
     {
       // cleanup
