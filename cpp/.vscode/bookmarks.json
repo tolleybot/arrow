@@ -44,6 +44,26 @@
 					"label": "Row group limit of 32767"
 				}
 			]
+		},
+		{
+			"path": "src/parquet/encryption/internal_file_decryptor.cc",
+			"bookmarks": [
+				{
+					"line": 241,
+					"column": 7,
+					"label": "UpdateDecryptor"
+				}
+			]
+		},
+		{
+			"path": "src/parquet/column_reader.cc",
+			"bookmarks": [
+				{
+					"line": 424,
+					"column": 22,
+					"label": "SerializedPageReader"
+				}
+			]
 		}
 	]
 }

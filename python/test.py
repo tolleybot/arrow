@@ -47,16 +47,17 @@ file_format = ds.ParquetFileFormat(default_fragment_scan_options=scan_options)
 write_options = file_format.make_write_options(encryption_config=pqe_config)
 file_decryption_properties = crypto_factory.file_decryption_properties(kms_config)
 
-with tempfile.TemporaryDirectory() as tempdir:
-    path = tempdir + "/test-dataset"
-    ds.write_dataset(table, path, format=file_format, file_options=write_options)
+for i in range(10000):
+    with tempfile.TemporaryDirectory() as tempdir:
+        path = tempdir + "/test-dataset"
+        ds.write_dataset(table, path, format=file_format, file_options=write_options)
 
-    file_path = path + "/part-0.parquet"
-    new_table = pq.ParquetFile(
-        file_path, decryption_properties=file_decryption_properties
-    ).read()
-    assert table == new_table
+        file_path = path + "/part-0.parquet"
+        new_table = pq.ParquetFile(
+            file_path, decryption_properties=file_decryption_properties
+        ).read()
+        assert table == new_table
 
-    dataset = ds.dataset(path, format=file_format)
-    new_table = dataset.to_table()
-    assert table == new_table
+        dataset = ds.dataset(path, format=file_format)
+        new_table = dataset.to_table()
+        assert table == new_table
