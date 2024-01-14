@@ -63,3 +63,5 @@ with tempfile.TemporaryDirectory() as tempdir:
     dataset = ds.dataset(path, format=file_format)
     new_table = dataset.to_table()
     assert table == new_table
+
+print("finished")

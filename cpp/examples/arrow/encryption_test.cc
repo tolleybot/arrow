@@ -27,8 +27,6 @@ using namespace parquet::encryption;
 constexpr std::string_view kFooterKeyName = "footer_key";
 constexpr std::string_view kColumnKeyMapping = "col_key: foo";
 constexpr std::string_view kBaseDir = "/Users/dtolley/Documents/temp";
-// #define ROW_COUNT 100
-// #define ROW_COUNT std::pow(2, 15) + 1 + 1
 
 class NoOpKmsClient : public parquet::encryption::KmsClient {
  public:
@@ -127,8 +125,8 @@ int main() {
     parquet_encryption_config->kms_connection_config = kms_connection_config;
     parquet_encryption_config->encryption_config = std::move(encryption_config);
 
-    // setenv("OMP_NUM_THREADS", "1", 1);
-
+// setenv("OMP_NUM_THREADS", "1", 1);
+#if 1
     // Writing dataset
     {
       // cleanup
@@ -139,8 +137,6 @@ int main() {
       }
 
       auto file_format = std::make_shared<ParquetFileFormat>();
-      //   auto parquet_file_write_options =
-      //       std::make_shared<ParquetFileWriteOptions>(file_format->DefaultWriteOptions());
       auto parquet_file_write_options =
           arrow::internal::checked_pointer_cast<ParquetFileWriteOptions>(
               file_format->DefaultWriteOptions());
@@ -169,6 +165,7 @@ int main() {
         throw std::runtime_error("Failed to write dataset.");
       }
     }
+#endif
 
     // Reading dataset
     {
@@ -207,6 +204,10 @@ int main() {
         throw std::runtime_error("Failed to create scanner builder.");
       }
       auto scanner_builder = *scanner_builder_result;
+
+      // if (!scanner_builder->BatchSize(1000).ok()) {
+      //   throw std::runtime_error("Failed to set batch size.");
+      // }
 
       if (!scanner_builder->UseThreads(false).ok()) {
         throw std::runtime_error(
