@@ -81,6 +81,7 @@
         "compare": "cpp",
         "concepts": "cpp",
         "algorithm": "cpp",
-        "csignal": "cpp"
+        "csignal": "cpp",
+        "filesystem": "cpp"
     }
 }
