@@ -181,9 +181,9 @@ if(ARROW_PARQUET)
                            ${PROJECT_SOURCE_DIR}/src/parquet/encryption/test_in_memory_kms.cc
                            
     )
-    add_arrow_dataset_test(file_parquet_encryption_test2 #TODO: DON
+    add_arrow_dataset_test(large_row_parquet_encrypt_test 
     SOURCES
-    file_parquet_encryption_test2.cc
+    large_row_parquet_encrypt_test.cc
     ${PROJECT_SOURCE_DIR}/src/parquet/encryption/test_in_memory_kms.cc
     
     )

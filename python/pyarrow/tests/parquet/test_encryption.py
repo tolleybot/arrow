@@ -16,8 +16,12 @@
 # under the License.
 import pytest
 from datetime import timedelta
-
+import numpy as np
+import tempfile
+import pyarrow.dataset as ds
 import pyarrow as pa
+import base64
+
 try:
     import pyarrow.parquet as pq
     import pyarrow.parquet.encryption as pe
@@ -26,10 +30,12 @@ except ImportError:
     pe = None
 else:
     from pyarrow.tests.parquet.encryption import (
-        InMemoryKmsClient, verify_file_encrypted)
+        InMemoryKmsClient,
+        verify_file_encrypted,
+    )
 
 
-PARQUET_NAME = 'encrypted_table.in_mem.parquet'
+PARQUET_NAME = "encrypted_table.in_mem.parquet"
 FOOTER_KEY = b"0123456789112345"
 FOOTER_KEY_NAME = "footer_key"
 COL_KEY = b"1234567890123450"
@@ -39,29 +45,29 @@ COL_KEY_NAME = "col_key"
 # Marks all of the tests in this module
 # Ignore these with pytest ... -m 'not parquet_encryption'
 # Ignore these with pytest ... -m 'not parquet'
-pytestmark = [
-    pytest.mark.parquet_encryption,
-    pytest.mark.parquet
-]
+pytestmark = [pytest.mark.parquet_encryption, pytest.mark.parquet]
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def data_table():
-    data_table = pa.Table.from_pydict({
-        'a': pa.array([1, 2, 3]),
-        'b': pa.array(['a', 'b', 'c']),
-        'c': pa.array(['x', 'y', 'z'])
-    })
+    data_table = pa.Table.from_pydict(
+        {
+            "a": pa.array([1, 2, 3]),
+            "b": pa.array(["a", "b", "c"]),
+            "c": pa.array(["x", "y", "z"]),
+        }
+    )
     return data_table
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def basic_encryption_config():
     basic_encryption_config = pe.EncryptionConfiguration(
         footer_key=FOOTER_KEY_NAME,
         column_keys={
             COL_KEY_NAME: ["a", "b"],
-        })
+        },
+    )
     return basic_encryption_config
 
 
@@ -79,7 +85,8 @@ def test_encrypted_parquet_write_read(tempdir, data_table):
         },
         encryption_algorithm="AES_GCM_V1",
         cache_lifetime=timedelta(minutes=5.0),
-        data_key_length_bits=256)
+        data_key_length_bits=256,
+    )
 
     kms_connection_config = pe.KmsConnectionConfig(
         custom_kms_conf={
@@ -93,43 +100,47 @@ def test_encrypted_parquet_write_read(tempdir, data_table):
 
     crypto_factory = pe.CryptoFactory(kms_factory)
     # Write with encryption properties
-    write_encrypted_parquet(path, data_table, encryption_config,
-                            kms_connection_config, crypto_factory)
+    write_encrypted_parquet(
+        path, data_table, encryption_config, kms_connection_config, crypto_factory
+    )
     verify_file_encrypted(path)
 
     # Read with decryption properties
     decryption_config = pe.DecryptionConfiguration(
-        cache_lifetime=timedelta(minutes=5.0))
+        cache_lifetime=timedelta(minutes=5.0)
+    )
     result_table = read_encrypted_parquet(
-        path, decryption_config, kms_connection_config, crypto_factory)
+        path, decryption_config, kms_connection_config, crypto_factory
+    )
     assert data_table.equals(result_table)
 
 
-def write_encrypted_parquet(path, table, encryption_config,
-                            kms_connection_config, crypto_factory):
+def write_encrypted_parquet(
+    path, table, encryption_config, kms_connection_config, crypto_factory
+):
     file_encryption_properties = crypto_factory.file_encryption_properties(
-        kms_connection_config, encryption_config)
+        kms_connection_config, encryption_config
+    )
     assert file_encryption_properties is not None
     with pq.ParquetWriter(
-            path, table.schema,
-            encryption_properties=file_encryption_properties) as writer:
+        path, table.schema, encryption_properties=file_encryption_properties
+    ) as writer:
         writer.write_table(table)
 
 
-def read_encrypted_parquet(path, decryption_config,
-                           kms_connection_config, crypto_factory):
+def read_encrypted_parquet(
+    path, decryption_config, kms_connection_config, crypto_factory
+):
     file_decryption_properties = crypto_factory.file_decryption_properties(
-        kms_connection_config, decryption_config)
+        kms_connection_config, decryption_config
+    )
     assert file_decryption_properties is not None
-    meta = pq.read_metadata(
-        path, decryption_properties=file_decryption_properties)
+    meta = pq.read_metadata(path, decryption_properties=file_decryption_properties)
     assert meta.num_columns == 3
-    schema = pq.read_schema(
-        path, decryption_properties=file_decryption_properties)
+    schema = pq.read_schema(path, decryption_properties=file_decryption_properties)
     assert len(schema.names) == 3
 
-    result = pq.ParquetFile(
-        path, decryption_properties=file_decryption_properties)
+    result = pq.ParquetFile(path, decryption_properties=file_decryption_properties)
     return result.read(use_threads=True)
 
 
@@ -148,7 +159,8 @@ def test_encrypted_parquet_write_read_wrong_key(tempdir, data_table):
         },
         encryption_algorithm="AES_GCM_V1",
         cache_lifetime=timedelta(minutes=5.0),
-        data_key_length_bits=256)
+        data_key_length_bits=256,
+    )
 
     kms_connection_config = pe.KmsConnectionConfig(
         custom_kms_conf={
@@ -162,8 +174,9 @@ def test_encrypted_parquet_write_read_wrong_key(tempdir, data_table):
 
     crypto_factory = pe.CryptoFactory(kms_factory)
     # Write with encryption properties
-    write_encrypted_parquet(path, data_table, encryption_config,
-                            kms_connection_config, crypto_factory)
+    write_encrypted_parquet(
+        path, data_table, encryption_config, kms_connection_config, crypto_factory
+    )
     verify_file_encrypted(path)
 
     # Read with decryption properties
@@ -175,11 +188,12 @@ def test_encrypted_parquet_write_read_wrong_key(tempdir, data_table):
         }
     )
     decryption_config = pe.DecryptionConfiguration(
-        cache_lifetime=timedelta(minutes=5.0))
+        cache_lifetime=timedelta(minutes=5.0)
+    )
     with pytest.raises(ValueError, match=r"Incorrect master key used"):
         read_encrypted_parquet(
-            path, decryption_config, wrong_kms_connection_config,
-            crypto_factory)
+            path, decryption_config, wrong_kms_connection_config, crypto_factory
+        )
 
 
 def test_encrypted_parquet_read_no_decryption_config(tempdir, data_table):
@@ -191,8 +205,7 @@ def test_encrypted_parquet_read_no_decryption_config(tempdir, data_table):
         pq.ParquetFile(tempdir / PARQUET_NAME).read()
 
 
-def test_encrypted_parquet_read_metadata_no_decryption_config(
-        tempdir, data_table):
+def test_encrypted_parquet_read_metadata_no_decryption_config(tempdir, data_table):
     """Write an encrypted parquet, verify it's encrypted,
     but then try to read its metadata without decryption properties."""
     test_encrypted_parquet_write_read(tempdir, data_table)
@@ -201,8 +214,7 @@ def test_encrypted_parquet_read_metadata_no_decryption_config(
         pq.read_metadata(tempdir / PARQUET_NAME)
 
 
-def test_encrypted_parquet_read_schema_no_decryption_config(
-        tempdir, data_table):
+def test_encrypted_parquet_read_schema_no_decryption_config(tempdir, data_table):
     """Write an encrypted parquet, verify it's encrypted,
     but then try to read its schema without decryption properties."""
     test_encrypted_parquet_write_read(tempdir, data_table)
@@ -213,11 +225,10 @@ def test_encrypted_parquet_read_schema_no_decryption_config(
 def test_encrypted_parquet_write_no_col_key(tempdir, data_table):
     """Write an encrypted parquet, but give only footer key,
     without column key."""
-    path = tempdir / 'encrypted_table_no_col_key.in_mem.parquet'
+    path = tempdir / "encrypted_table_no_col_key.in_mem.parquet"
 
     # Encrypt the footer with the footer key
-    encryption_config = pe.EncryptionConfiguration(
-        footer_key=FOOTER_KEY_NAME)
+    encryption_config = pe.EncryptionConfiguration(footer_key=FOOTER_KEY_NAME)
 
     kms_connection_config = pe.KmsConnectionConfig(
         custom_kms_conf={
@@ -230,18 +241,20 @@ def test_encrypted_parquet_write_no_col_key(tempdir, data_table):
         return InMemoryKmsClient(kms_connection_configuration)
 
     crypto_factory = pe.CryptoFactory(kms_factory)
-    with pytest.raises(OSError,
-                       match="Either column_keys or uniform_encryption "
-                       "must be set"):
+    with pytest.raises(
+        OSError, match="Either column_keys or uniform_encryption " "must be set"
+    ):
         # Write with encryption properties
-        write_encrypted_parquet(path, data_table, encryption_config,
-                                kms_connection_config, crypto_factory)
+        write_encrypted_parquet(
+            path, data_table, encryption_config, kms_connection_config, crypto_factory
+        )
 
 
-def test_encrypted_parquet_write_kms_error(tempdir, data_table,
-                                           basic_encryption_config):
+def test_encrypted_parquet_write_kms_error(
+    tempdir, data_table, basic_encryption_config
+):
     """Write an encrypted parquet, but raise KeyError in KmsClient."""
-    path = tempdir / 'encrypted_table_kms_error.in_mem.parquet'
+    path = tempdir / "encrypted_table_kms_error.in_mem.parquet"
     encryption_config = basic_encryption_config
 
     # Empty master_keys_map
@@ -255,14 +268,16 @@ def test_encrypted_parquet_write_kms_error(tempdir, data_table,
     crypto_factory = pe.CryptoFactory(kms_factory)
     with pytest.raises(KeyError, match="footer_key"):
         # Write with encryption properties
-        write_encrypted_parquet(path, data_table, encryption_config,
-                                kms_connection_config, crypto_factory)
+        write_encrypted_parquet(
+            path, data_table, encryption_config, kms_connection_config, crypto_factory
+        )
 
 
-def test_encrypted_parquet_write_kms_specific_error(tempdir, data_table,
-                                                    basic_encryption_config):
+def test_encrypted_parquet_write_kms_specific_error(
+    tempdir, data_table, basic_encryption_config
+):
     """Write an encrypted parquet, but raise KeyError in KmsClient."""
-    path = tempdir / 'encrypted_table_kms_error.in_mem.parquet'
+    path = tempdir / "encrypted_table_kms_error.in_mem.parquet"
     encryption_config = basic_encryption_config
 
     # Empty master_keys_map
@@ -291,43 +306,45 @@ def test_encrypted_parquet_write_kms_specific_error(tempdir, data_table,
     crypto_factory = pe.CryptoFactory(kms_factory)
     with pytest.raises(ValueError, match="Cannot Wrap Key"):
         # Write with encryption properties
-        write_encrypted_parquet(path, data_table, encryption_config,
-                                kms_connection_config, crypto_factory)
+        write_encrypted_parquet(
+            path, data_table, encryption_config, kms_connection_config, crypto_factory
+        )
 
 
-def test_encrypted_parquet_write_kms_factory_error(tempdir, data_table,
-                                                   basic_encryption_config):
+def test_encrypted_parquet_write_kms_factory_error(
+    tempdir, data_table, basic_encryption_config
+):
     """Write an encrypted parquet, but raise ValueError in kms_factory."""
-    path = tempdir / 'encrypted_table_kms_factory_error.in_mem.parquet'
+    path = tempdir / "encrypted_table_kms_factory_error.in_mem.parquet"
     encryption_config = basic_encryption_config
 
     # Empty master_keys_map
     kms_connection_config = pe.KmsConnectionConfig()
 
     def kms_factory(kms_connection_configuration):
-        raise ValueError('Cannot create KmsClient')
+        raise ValueError("Cannot create KmsClient")
 
     crypto_factory = pe.CryptoFactory(kms_factory)
-    with pytest.raises(ValueError,
-                       match="Cannot create KmsClient"):
+    with pytest.raises(ValueError, match="Cannot create KmsClient"):
         # Write with encryption properties
-        write_encrypted_parquet(path, data_table, encryption_config,
-                                kms_connection_config, crypto_factory)
+        write_encrypted_parquet(
+            path, data_table, encryption_config, kms_connection_config, crypto_factory
+        )
 
 
 def test_encrypted_parquet_write_kms_factory_type_error(
-        tempdir, data_table, basic_encryption_config):
+    tempdir, data_table, basic_encryption_config
+):
     """Write an encrypted parquet, but use wrong KMS client type
     that doesn't implement KmsClient."""
-    path = tempdir / 'encrypted_table_kms_factory_error.in_mem.parquet'
+    path = tempdir / "encrypted_table_kms_factory_error.in_mem.parquet"
     encryption_config = basic_encryption_config
 
     # Empty master_keys_map
     kms_connection_config = pe.KmsConnectionConfig()
 
-    class WrongTypeKmsClient():
-        """This is not an implementation of KmsClient.
-        """
+    class WrongTypeKmsClient:
+        """This is not an implementation of KmsClient."""
 
         def __init__(self, config):
             self.master_keys_map = config.custom_kms_conf
@@ -344,8 +361,9 @@ def test_encrypted_parquet_write_kms_factory_type_error(
     crypto_factory = pe.CryptoFactory(kms_factory)
     with pytest.raises(TypeError):
         # Write with encryption properties
-        write_encrypted_parquet(path, data_table, encryption_config,
-                                kms_connection_config, crypto_factory)
+        write_encrypted_parquet(
+            path, data_table, encryption_config, kms_connection_config, crypto_factory
+        )
 
 
 def test_encrypted_parquet_encryption_configuration():
@@ -361,7 +379,9 @@ def test_encrypted_parquet_encryption_configuration():
 
     encryption_config = pe.EncryptionConfiguration(
         footer_key=FOOTER_KEY_NAME,
-        column_keys={COL_KEY_NAME: ["a", "b"], },
+        column_keys={
+            COL_KEY_NAME: ["a", "b"],
+        },
         encryption_algorithm="AES_GCM_CTR_V1",
         plaintext_footer=True,
         double_wrapping=False,
@@ -371,9 +391,10 @@ def test_encrypted_parquet_encryption_configuration():
     )
     validate_encryption_configuration(encryption_config)
 
-    encryption_config_1 = pe.EncryptionConfiguration(
-        footer_key=FOOTER_KEY_NAME)
-    encryption_config_1.column_keys = {COL_KEY_NAME: ["a", "b"], }
+    encryption_config_1 = pe.EncryptionConfiguration(footer_key=FOOTER_KEY_NAME)
+    encryption_config_1.column_keys = {
+        COL_KEY_NAME: ["a", "b"],
+    }
     encryption_config_1.encryption_algorithm = "AES_GCM_CTR_V1"
     encryption_config_1.plaintext_footer = True
     encryption_config_1.double_wrapping = False
@@ -385,7 +406,8 @@ def test_encrypted_parquet_encryption_configuration():
 
 def test_encrypted_parquet_decryption_configuration():
     decryption_config = pe.DecryptionConfiguration(
-        cache_lifetime=timedelta(minutes=10.0))
+        cache_lifetime=timedelta(minutes=10.0)
+    )
     assert timedelta(minutes=10.0) == decryption_config.cache_lifetime
 
     decryption_config_1 = pe.DecryptionConfiguration()
@@ -398,8 +420,10 @@ def test_encrypted_parquet_kms_configuration():
         assert "Instance1" == kms_connection_config.kms_instance_id
         assert "URL1" == kms_connection_config.kms_instance_url
         assert "MyToken" == kms_connection_config.key_access_token
-        assert ({"key1": "key_material_1", "key2": "key_material_2"} ==
-                kms_connection_config.custom_kms_conf)
+        assert {
+            "key1": "key_material_1",
+            "key2": "key_material_2",
+        } == kms_connection_config.custom_kms_conf
 
     kms_connection_config = pe.KmsConnectionConfig(
         kms_instance_id="Instance1",
@@ -408,7 +432,8 @@ def test_encrypted_parquet_kms_configuration():
         custom_kms_conf={
             "key1": "key_material_1",
             "key2": "key_material_2",
-        })
+        },
+    )
     validate_kms_connection_config(kms_connection_config)
 
     kms_connection_config_1 = pe.KmsConnectionConfig()
@@ -422,10 +447,11 @@ def test_encrypted_parquet_kms_configuration():
     validate_kms_connection_config(kms_connection_config_1)
 
 
-@pytest.mark.xfail(reason="Plaintext footer - reading plaintext column subset"
-                   " reads encrypted columns too")
-def test_encrypted_parquet_write_read_plain_footer_single_wrapping(
-        tempdir, data_table):
+@pytest.mark.xfail(
+    reason="Plaintext footer - reading plaintext column subset"
+    " reads encrypted columns too"
+)
+def test_encrypted_parquet_write_read_plain_footer_single_wrapping(tempdir, data_table):
     """Write an encrypted parquet, with plaintext footer
     and with single wrapping,
     verify it's encrypted, and then read plaintext columns."""
@@ -440,7 +466,8 @@ def test_encrypted_parquet_write_read_plain_footer_single_wrapping(
             COL_KEY_NAME: ["a", "b"],
         },
         plaintext_footer=True,
-        double_wrapping=False)
+        double_wrapping=False,
+    )
 
     kms_connection_config = pe.KmsConnectionConfig(
         custom_kms_conf={
@@ -454,8 +481,9 @@ def test_encrypted_parquet_write_read_plain_footer_single_wrapping(
 
     crypto_factory = pe.CryptoFactory(kms_factory)
     # Write with encryption properties
-    write_encrypted_parquet(path, data_table, encryption_config,
-                            kms_connection_config, crypto_factory)
+    write_encrypted_parquet(
+        path, data_table, encryption_config, kms_connection_config, crypto_factory
+    )
 
     # # Read without decryption properties only the plaintext column
     # result = pq.ParquetFile(path)
@@ -473,9 +501,8 @@ def test_encrypted_parquet_write_external(tempdir, data_table):
 
     # Encrypt the file with the footer key
     encryption_config = pe.EncryptionConfiguration(
-        footer_key=FOOTER_KEY_NAME,
-        column_keys={},
-        internal_key_material=False)
+        footer_key=FOOTER_KEY_NAME, column_keys={}, internal_key_material=False
+    )
 
     kms_connection_config = pe.KmsConnectionConfig(
         custom_kms_conf={FOOTER_KEY_NAME: FOOTER_KEY.decode("UTF-8")}
@@ -486,8 +513,9 @@ def test_encrypted_parquet_write_external(tempdir, data_table):
 
     crypto_factory = pe.CryptoFactory(kms_factory)
     # Write with encryption properties
-    write_encrypted_parquet(path, data_table, encryption_config,
-                            kms_connection_config, crypto_factory)
+    write_encrypted_parquet(
+        path, data_table, encryption_config, kms_connection_config, crypto_factory
+    )
 
 
 def test_encrypted_parquet_loop(tempdir, data_table, basic_encryption_config):
@@ -513,20 +541,78 @@ def test_encrypted_parquet_loop(tempdir, data_table, basic_encryption_config):
     crypto_factory = pe.CryptoFactory(kms_factory)
 
     # Write with encryption properties
-    write_encrypted_parquet(path, data_table, encryption_config,
-                            kms_connection_config, crypto_factory)
+    write_encrypted_parquet(
+        path, data_table, encryption_config, kms_connection_config, crypto_factory
+    )
     verify_file_encrypted(path)
 
     decryption_config = pe.DecryptionConfiguration(
-        cache_lifetime=timedelta(minutes=5.0))
+        cache_lifetime=timedelta(minutes=5.0)
+    )
 
     for i in range(50):
         # Read with decryption properties
         file_decryption_properties = crypto_factory.file_decryption_properties(
-            kms_connection_config, decryption_config)
+            kms_connection_config, decryption_config
+        )
         assert file_decryption_properties is not None
 
-        result = pq.ParquetFile(
-            path, decryption_properties=file_decryption_properties)
+        result = pq.ParquetFile(path, decryption_properties=file_decryption_properties)
         result_table = result.read(use_threads=True)
         assert data_table.equals(result_table)
+
+
+@pytest.mark.parquet_encryption
+def test_large_row_encryption_decryption():
+    """Test encryption and decryption of a large row."""
+
+    class NoOpKmsClient(pe.KmsClient):
+        def __init__(self):
+            super().__init__()
+
+        def wrap_key(self, key_bytes: bytes, _: str) -> bytes:
+            b = base64.b64encode(key_bytes)
+            return b
+
+        def unwrap_key(self, wrapped_key: bytes, _: str) -> bytes:
+            b = base64.b64decode(wrapped_key)
+            return b
+
+    row_count = pow(2, 15) + 1
+    table = pa.Table.from_arrays(
+        [pa.array(np.random.rand(row_count), type=pa.float32())], names=["foo"]
+    )
+
+    kms_config = pe.KmsConnectionConfig()
+    crypto_factory = pe.CryptoFactory(lambda _: NoOpKmsClient())
+    encryption_config = pe.EncryptionConfiguration(
+        footer_key="UNIMPORTANT_KEY",
+        column_keys={"UNIMPORTANT_KEY": ["foo"]},
+        double_wrapping=True,
+        plaintext_footer=False,
+        data_key_length_bits=128,
+    )
+    pqe_config = ds.ParquetEncryptionConfig(
+        crypto_factory, kms_config, encryption_config
+    )
+    pqd_config = ds.ParquetDecryptionConfig(
+        crypto_factory, kms_config, pe.DecryptionConfiguration()
+    )
+    scan_options = ds.ParquetFragmentScanOptions(decryption_config=pqd_config)
+    file_format = ds.ParquetFileFormat(default_fragment_scan_options=scan_options)
+    write_options = file_format.make_write_options(encryption_config=pqe_config)
+    file_decryption_properties = crypto_factory.file_decryption_properties(kms_config)
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        path = tempdir + "/test-dataset"
+        ds.write_dataset(table, path, format=file_format, file_options=write_options)
+
+        file_path = path + "/part-0.parquet"
+        new_table = pq.ParquetFile(
+            file_path, decryption_properties=file_decryption_properties
+        ).read()
+        assert table == new_table
+
+        dataset = ds.dataset(path, format=file_format)
+        new_table = dataset.to_table()
+        assert table == new_table
