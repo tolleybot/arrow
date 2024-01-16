@@ -61,6 +61,7 @@ InternalFileDecryptor::InternalFileDecryptor(FileDecryptionProperties* propertie
 }
 
 void InternalFileDecryptor::WipeOutDecryptionKeys() {
+  std::lock_guard<std::mutex> lock(mutex_);
   properties_->WipeOutDecryptionKeys();
   for (auto const& i : all_decryptors_) {
     if (auto aes_decryptor = i.lock()) {
@@ -138,6 +139,9 @@ std::shared_ptr<Decryptor> InternalFileDecryptor::GetFooterDecryptor(
 
   // Create both data and metadata decryptors to avoid redundant retrieval of key
   // from the key_retriever.
+
+  std::lock_guard<std::mutex> lock(mutex_);  // Lock the critical section
+
   int key_len = static_cast<int>(footer_key.size());
   auto aes_metadata_decryptor = encryption::AesDecryptor::Make(
       algorithm_, key_len, /*metadata=*/true, &all_decryptors_);
@@ -203,10 +207,10 @@ std::shared_ptr<Decryptor> InternalFileDecryptor::GetColumnDecryptor(
   // Create both data and metadata decryptors to avoid redundant retrieval of key
   // using the key_retriever.
   int key_len = static_cast<int>(column_key.size());
-  auto aes_metadata_decryptor = encryption::AesDecryptor::Make(
-      algorithm_, key_len, /*metadata=*/true, &all_decryptors_);
-  auto aes_data_decryptor = encryption::AesDecryptor::Make(
-      algorithm_, key_len, /*metadata=*/false, &all_decryptors_);
+
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto aes_decryptor =
+      encryption::AesDecryptor::Make(algorithm_, key_len, metadata, &all_decryptors_);
 
   column_metadata_map_[column_path] = std::make_shared<Decryptor>(
       aes_metadata_decryptor, column_key, file_aad_, aad, pool_);
