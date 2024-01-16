@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -55,12 +56,7 @@ class AesEncryptor::AesEncryptorImpl {
   explicit AesEncryptorImpl(ParquetCipher::type alg_id, int key_len, bool metadata,
                             bool write_length);
 
-  ~AesEncryptorImpl() {
-    if (nullptr != ctx_) {
-      EVP_CIPHER_CTX_free(ctx_);
-      ctx_ = nullptr;
-    }
-  }
+  ~AesEncryptorImpl() { WipeOut(); }
 
   int Encrypt(const uint8_t* plaintext, int plaintext_len, const uint8_t* key,
               int key_len, const uint8_t* aad, int aad_len, uint8_t* ciphertext);
@@ -69,6 +65,7 @@ class AesEncryptor::AesEncryptorImpl {
                           int key_len, const uint8_t* aad, int aad_len,
                           const uint8_t* nonce, uint8_t* encrypted_footer);
   void WipeOut() {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (nullptr != ctx_) {
       EVP_CIPHER_CTX_free(ctx_);
       ctx_ = nullptr;
@@ -79,6 +76,7 @@ class AesEncryptor::AesEncryptorImpl {
 
  private:
   EVP_CIPHER_CTX* ctx_;
+  std::mutex mutex_;
   int aes_mode_;
   int key_length_;
   int ciphertext_size_delta_;
