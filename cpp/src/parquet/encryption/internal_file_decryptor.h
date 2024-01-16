@@ -19,6 +19,7 @@
 
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -88,6 +89,7 @@ class InternalFileDecryptor {
       const std::string& aad = "");
 
  private:
+  std::mutex mutex_;
   FileDecryptionProperties* properties_;
   // Concatenation of aad_prefix (if exists) and aad_file_unique
   std::string file_aad_;

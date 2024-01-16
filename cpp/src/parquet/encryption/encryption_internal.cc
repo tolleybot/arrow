@@ -65,7 +65,6 @@ class AesEncryptor::AesEncryptorImpl {
                           int key_len, const uint8_t* aad, int aad_len,
                           const uint8_t* nonce, uint8_t* encrypted_footer);
   void WipeOut() {
-    std::lock_guard<std::mutex> lock(mutex_);
     if (nullptr != ctx_) {
       EVP_CIPHER_CTX_free(ctx_);
       ctx_ = nullptr;
@@ -76,7 +75,6 @@ class AesEncryptor::AesEncryptorImpl {
 
  private:
   EVP_CIPHER_CTX* ctx_;
-  std::mutex mutex_;
   int aes_mode_;
   int key_length_;
   int ciphertext_size_delta_;
@@ -322,7 +320,6 @@ class AesDecryptor::AesDecryptorImpl {
               int key_len, const uint8_t* aad, int aad_len, uint8_t* plaintext);
 
   void WipeOut() {
-    std::lock_guard<std::mutex> lock(mutex_);
     if (nullptr != ctx_) {
       EVP_CIPHER_CTX_free(ctx_);
       ctx_ = nullptr;
@@ -333,7 +330,6 @@ class AesDecryptor::AesDecryptorImpl {
 
  private:
   EVP_CIPHER_CTX* ctx_;
-  std::mutex mutex_;
   int aes_mode_;
   int key_length_;
   int ciphertext_size_delta_;
