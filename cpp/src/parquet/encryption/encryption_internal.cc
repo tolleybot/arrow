@@ -316,17 +316,13 @@ class AesDecryptor::AesDecryptorImpl {
   explicit AesDecryptorImpl(ParquetCipher::type alg_id, int key_len, bool metadata,
                             bool contains_length);
 
-  ~AesDecryptorImpl() {
-    if (nullptr != ctx_) {
-      EVP_CIPHER_CTX_free(ctx_);
-      ctx_ = nullptr;
-    }
-  }
+  ~AesDecryptorImpl() { WipeOut(); }
 
   int Decrypt(const uint8_t* ciphertext, int ciphertext_len, const uint8_t* key,
               int key_len, const uint8_t* aad, int aad_len, uint8_t* plaintext);
 
   void WipeOut() {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (nullptr != ctx_) {
       EVP_CIPHER_CTX_free(ctx_);
       ctx_ = nullptr;
@@ -337,6 +333,7 @@ class AesDecryptor::AesDecryptorImpl {
 
  private:
   EVP_CIPHER_CTX* ctx_;
+  std::mutex mutex_;
   int aes_mode_;
   int key_length_;
   int ciphertext_size_delta_;
