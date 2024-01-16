@@ -41,12 +41,11 @@
 #include <arrow/util/base64.h>
 #include <filesystem>
 
-#define ROW_COUNT std::pow(2, 15) + 1;
+#define ROW_COUNT 32769;
 
 constexpr std::string_view kFooterKeyName = "footer_key";
 constexpr std::string_view kColumnKeyMapping = "col_key: foo";
 constexpr std::string_view kBaseDir = "/Users/dtolley/Documents/temp";
-;
 
 using arrow::internal::checked_pointer_cast;
 
@@ -163,7 +162,7 @@ class LargeRowEncryptionTest : public ::testing::Test {
   std::string temp_dir_path_;
 };
 
-// Test for writing and reading encrypted dataset
+// Test for writing and reading encrypted datasetclear
 TEST_F(LargeRowEncryptionTest, ReadEncryptLargeRows) {
   // Create decryption properties.
   auto decryption_config =
