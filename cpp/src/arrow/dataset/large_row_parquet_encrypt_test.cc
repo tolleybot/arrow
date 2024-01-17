@@ -41,7 +41,7 @@
 #include <arrow/util/base64.h>
 #include <filesystem>
 
-#define ROW_COUNT 32769;
+constexpr int ROW_COUNT = 32769;
 
 constexpr std::string_view kFooterKeyName = "footer_key";
 constexpr std::string_view kColumnKeyMapping = "col_key: foo";
