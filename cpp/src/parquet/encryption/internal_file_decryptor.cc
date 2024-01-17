@@ -61,7 +61,6 @@ InternalFileDecryptor::InternalFileDecryptor(FileDecryptionProperties* propertie
 }
 
 void InternalFileDecryptor::WipeOutDecryptionKeys() {
-  std::lock_guard<std::mutex> lock(mutex_);
   properties_->WipeOutDecryptionKeys();
   for (auto const& i : all_decryptors_) {
     if (auto aes_decryptor = i.lock()) {

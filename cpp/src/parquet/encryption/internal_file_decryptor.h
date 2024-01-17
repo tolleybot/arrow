@@ -100,7 +100,7 @@ class InternalFileDecryptor {
   ParquetCipher::type algorithm_;
   std::string footer_key_metadata_;
   // Mutex to guard access to all_decryptors_
-  std::mutex mutex_;
+  mutable std::mutex mutex_;
   // A weak reference to all decryptors that need to be wiped out when decryption is
   // finished, guarded by mutex_ for thread safety
   std::vector<std::weak_ptr<encryption::AesDecryptor>> all_decryptors_;
