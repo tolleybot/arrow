@@ -24,7 +24,6 @@
 #include <algorithm>
 #include <iostream>
 #include <memory>
-#include <mutex>
 #include <sstream>
 #include <string>
 #include <vector>
