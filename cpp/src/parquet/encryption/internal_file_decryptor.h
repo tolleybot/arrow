@@ -89,7 +89,6 @@ class InternalFileDecryptor {
       const std::string& aad = "");
 
  private:
-  std::mutex mutex_;
   FileDecryptionProperties* properties_;
   // Concatenation of aad_prefix (if exists) and aad_file_unique
   std::string file_aad_;
@@ -98,8 +97,10 @@ class InternalFileDecryptor {
   std::shared_ptr<Decryptor> footer_data_decryptor_;
   ParquetCipher::type algorithm_;
   std::string footer_key_metadata_;
+  // Mutex to guard access to all_decryptors_
+  std::mutex mutex_;
   // A weak reference to all decryptors that need to be wiped out when decryption is
-  // finished
+  // finished, guarded by mutex_ for thread safety
   std::vector<std::weak_ptr<encryption::AesDecryptor>> all_decryptors_;
 
   ::arrow::MemoryPool* pool_;
