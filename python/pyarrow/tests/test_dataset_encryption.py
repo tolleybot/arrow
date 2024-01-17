@@ -158,10 +158,10 @@ def test_write_dataset_parquet_without_encryption():
 
 
 @pytest.mark.skipif(
-    not encryption_unavailable, reason="Parquet Encryption is currently enabled"
+    encryption_unavailable, reason="Parquet Encryption is not currently enabled"
 )
 def test_large_row_encryption_decryption():
-    """Test encryption and decryption of a large row."""
+    """Test encryption and decryption of a large number of rows."""
 
     class NoOpKmsClient(pe.KmsClient):
         def __init__(self):
