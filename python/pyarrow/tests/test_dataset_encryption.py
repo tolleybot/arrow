@@ -15,10 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import base64
 from datetime import timedelta
+import numpy as np
 import pyarrow.fs as fs
 import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
+import tempfile
 
 encryption_unavailable = False
 
