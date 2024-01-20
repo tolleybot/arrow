@@ -127,10 +127,10 @@ cdef class ParquetFileFormat(FileFormat):
                             'instance of ParquetReadOptions')
 
         if default_fragment_scan_options is None:
-            # remove decryption_properties from scan_args as it does not take this parameter         
+            # remove decryption_properties from scan_args as it does not take this parameter
             decryption_properties = scan_args.pop('decryption_properties', None)
             default_fragment_scan_options = ParquetFragmentScanOptions(**scan_args)
-            # make sure scan options has decryption properties 
+            # make sure scan options has decryption properties
             if decryption_properties is not None:
                 default_fragment_scan_options.set_file_decryption_properties(
                     decryption_properties)
