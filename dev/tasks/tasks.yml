@@ -810,13 +810,6 @@ tasks:
       - flight-core-{no_rc_snapshot_version}-tests.jar
       - flight-core-{no_rc_snapshot_version}.jar
       - flight-core-{no_rc_snapshot_version}.pom
-      - flight-grpc-{no_rc_snapshot_version}-cyclonedx.json
-      - flight-grpc-{no_rc_snapshot_version}-cyclonedx.xml
-      - flight-grpc-{no_rc_snapshot_version}-javadoc.jar
-      - flight-grpc-{no_rc_snapshot_version}-sources.jar
-      - flight-grpc-{no_rc_snapshot_version}-tests.jar
-      - flight-grpc-{no_rc_snapshot_version}.jar
-      - flight-grpc-{no_rc_snapshot_version}.pom
       - flight-integration-tests-{no_rc_snapshot_version}-cyclonedx.json
       - flight-integration-tests-{no_rc_snapshot_version}-cyclonedx.xml
       - flight-integration-tests-{no_rc_snapshot_version}-jar-with-dependencies.jar
@@ -1032,6 +1025,8 @@ tasks:
     ci: github
     template: docker-tests/github.linux.yml
     params:
+      env:
+        UBUNTU: 22.04
       image: {{ image }}
 {% endfor %}
 
@@ -1277,7 +1272,7 @@ tasks:
       r_org: library
       r_image: r-base
       r_tag: latest
-      flags: '-e TEST_OFFLINE_BUILD=true'
+      flags: '-e ARROW_OFFLINE_BUILD=true'
 
   test-r-dev-duckdb:
     ci: github
