@@ -1314,7 +1314,6 @@ Examples
             )
 
         # check for single fragment dataset
-        single_file = None
         self._base_dir = None
         if not isinstance(path_or_paths, list):
             if _is_path_like(path_or_paths):
@@ -1327,24 +1326,10 @@ Examples
                     except ValueError:
                         filesystem = LocalFileSystem(use_mmap=memory_map)
                 finfo = filesystem.get_file_info(path_or_paths)
-                if finfo.is_file:
-                    single_file = path_or_paths
                 if finfo.type == FileType.Directory:
                     self._base_dir = path_or_paths
-            else:
-                single_file = path_or_paths
 
         parquet_format = ds.ParquetFileFormat(**read_options)
-
-        if single_file is not None:
-            fragment = parquet_format.make_fragment(single_file, filesystem)
-
-            self._dataset = ds.FileSystemDataset(
-                [fragment], schema=schema or fragment.physical_schema,
-                format=parquet_format,
-                filesystem=fragment.filesystem
-            )
-            return
 
         # check partitioning to enable dictionary encoding
         if partitioning == "hive":
