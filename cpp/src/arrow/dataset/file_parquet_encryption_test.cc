@@ -51,7 +51,6 @@ using arrow::internal::checked_pointer_cast;
 namespace arrow {
 namespace dataset {
 
-// Base class to test writing and reading encrypted dataset.
 class DatasetEncryptionTestBase : public ::testing::Test {
  public:
   // This function creates a mock file system using the current time point, creates a
@@ -235,16 +234,12 @@ TEST_F(DatasetEncryptionTest, ReadSingleFile) {
   ASSERT_EQ(checked_pointer_cast<Int64Array>(table->column(2)->chunk(0))->GetView(0), 1);
 }
 
-// GH-39444: This test covers the case where parquet dataset scanner crashes when
-// processing encrypted datasets over 2^15 rows in multi-threaded mode.
 class LargeRowEncryptionTest : public DatasetEncryptionTestBase {
  public:
   // The dataset is partitioned using a Hive partitioning scheme.
   void PrepareTableAndPartitioning() override {
-    // Specifically chosen to be greater than batch size for triggering prefetch.
-    constexpr int kRowCount = 32769;
-
     // Create a random floating-point array with large number of rows.
+    constexpr int kRowCount = 32769;
     arrow::random::RandomArrayGenerator rand_gen(0);
     auto array = rand_gen.Float32(kRowCount, 0.0, 1.0, false);
     auto table_schema = schema({field("a", float32())});
