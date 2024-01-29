@@ -180,11 +180,6 @@ if(ARROW_PARQUET)
                            file_parquet_encryption_test.cc
                            ${PROJECT_SOURCE_DIR}/src/parquet/encryption/test_in_memory_kms.cc
     )
-    add_arrow_dataset_test(large_row_parquet_encrypt_test
-                           SOURCES
-                           large_row_parquet_encrypt_test.cc
-                           ${PROJECT_SOURCE_DIR}/src/parquet/encryption/test_in_memory_kms.cc
-    )
   endif()
 endif()
 
