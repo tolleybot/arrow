@@ -138,14 +138,12 @@ std::shared_ptr<Decryptor> InternalFileDecryptor::GetFooterDecryptor(
 
   // Create both data and metadata decryptors to avoid redundant retrieval of key
   // from the key_retriever.
-
   int key_len = static_cast<int>(footer_key.size());
   std::shared_ptr<encryption::AesDecryptor> aes_metadata_decryptor;
   std::shared_ptr<encryption::AesDecryptor> aes_data_decryptor;
 
   {
     std::lock_guard<std::mutex> lock(mutex_);
-
     aes_metadata_decryptor = encryption::AesDecryptor::Make(
         algorithm_, key_len, /*metadata=*/true, &all_decryptors_);
     aes_data_decryptor = encryption::AesDecryptor::Make(
@@ -211,11 +209,9 @@ std::shared_ptr<Decryptor> InternalFileDecryptor::GetColumnDecryptor(
   // Create both data and metadata decryptors to avoid redundant retrieval of key
   // using the key_retriever.
   int key_len = static_cast<int>(column_key.size());
-
   std::lock_guard<std::mutex> lock(mutex_);
   auto aes_decryptor =
       encryption::AesDecryptor::Make(algorithm_, key_len, metadata, &all_decryptors_);
-
   return std::make_shared<Decryptor>(std::move(aes_decryptor), column_key, file_aad_, aad,
                                      pool_);
 }
